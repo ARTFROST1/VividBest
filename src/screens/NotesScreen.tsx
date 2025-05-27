@@ -5,6 +5,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -420,15 +421,22 @@ const NotesScreen = () => {
           {renderNotesList(filterNotes(filterBySidebar(notes), search))}
         </ScrollView>
         {/* Кнопка добавить */}
-        <Button
-          mode="contained"
-          style={[styles.addNoteBtn, { backgroundColor: c.primary, borderRadius: roundness }]}
-          contentStyle={{ height: 48 }}
-          labelStyle={{ fontWeight: 'bold', fontSize: 16, color: c.onPrimary }}
-          onPress={() => setShowDialog(true)}
+        <LinearGradient
+          colors={['#7745dc', '#f34f8c']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.addNoteBtn, { borderRadius: roundness }]}
         >
-          + {t('new_note', 'Новая заметка')}
-        </Button>
+          <Button
+            mode="contained"
+            style={{ backgroundColor: 'transparent', elevation: 0 }}
+            contentStyle={{ height: 48 }}
+            labelStyle={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}
+            onPress={() => setShowDialog(true)}
+          >
+            + {t('new_note', 'Новая заметка')}
+          </Button>
+        </LinearGradient>
         {/* Диалог создания заметки/папки */}
         <Portal>
           <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
