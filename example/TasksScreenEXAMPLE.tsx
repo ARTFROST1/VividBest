@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, FlatList, StyleSheet, Platform } from 'react-native';
-import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, IconButton, Menu, Divider, Chip } from 'react-native-paper';
+import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, IconButton, Menu } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
 import { TagSelector } from '../components/TagSelector';
 import { PrioritySelector } from '../components/PrioritySelector';
 import { useTranslation } from 'react-i18next';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Task {
   id: string;
@@ -29,7 +28,7 @@ const PRIORITY_COLORS = {
 
 const PRIORITY_LABELS = {
   low: 'Низкий',
-  medium: 'Средний',
+  medium: '',
   high: 'Высокий',
 };
 
@@ -39,8 +38,6 @@ const REPEAT_LABELS = {
   weekly: 'Еженедельно',
   monthly: 'Ежемесячно',
 };
-
-const TASKS_STORAGE_KEY = 'TASKS_V1';
 
 function formatDate(date: Date) {
   return date.toISOString().split('T')[0];
@@ -66,8 +63,6 @@ const TasksScreen = () => {
   const [reminderTime, setReminderTime] = useState<string | undefined>(undefined);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const theme = useTheme();
-  const { colors, roundness } = theme;
-  const c = colors as any;
   const {
     tags: allTags,
     addTag: addGlobalTag,
@@ -76,43 +71,12 @@ const TasksScreen = () => {
   } = useTags();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { t } = useTranslation();
-  const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
   }, []);
 
-  useEffect(() => {
-    const loadTasks = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(TASKS_STORAGE_KEY);
-        if (saved) {
-          const parsed: Task[] = JSON.parse(saved);
-          setTasks(parsed);
-          // Восстановить уведомления для актуальных задач
-          parsed.forEach(async (task) => {
-            if (!task.completed && task.reminderTime && !task.notificationId) {
-              const notificationId = await scheduleTaskNotification(task);
-              setTasks((prev) =>
-                prev.map((t) =>
-                  t.id === task.id ? { ...t, notificationId } : t
-                )
-              );
-            }
-          });
-        }
-      } catch (e) {
-        console.error('Ошибка загрузки задач:', e);
-      }
-    };
-    loadTasks();
-  }, []);
-
-  useEffect(() => {
-    AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-  }, [tasks]);
-
-  async function scheduleTaskNotification(task: Task): Promise<string | undefined> {
+  async function scheduleTaskNotification(task: Omit<Task, 'notificationId'>): Promise<string | undefined> {
     if (!task.reminderTime) return undefined;
     const [h, m] = task.reminderTime.split(':').map(Number);
     const due = new Date(task.dueDate + 'T' + task.reminderTime + ':00');
@@ -186,7 +150,6 @@ const TasksScreen = () => {
             tags: selectedTagIds.map(id => allTags.find(t => t.id === id)?.name || ''),
             repeatInterval,
             reminderTime,
-            notificationId: undefined,
           });
         }
       }
@@ -294,25 +257,46 @@ const TasksScreen = () => {
   const progress = filteredTasks.length > 0 ? completedCount / filteredTasks.length : 0;
 
   const renderItem = ({ item }: { item: Task }) => (
-    <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22' }]}> 
-      <View style={styles.taskRow}>
+    <Card style={styles.card}>
+      <Card.Content style={styles.cardContent}>
+        <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[item.priority] }]} />
         <Checkbox
           status={item.completed ? 'checked' : 'unchecked'}
           onPress={() => handleToggleTask(item.id)}
-          color={PRIORITY_COLORS[item.priority]}
         />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.taskTitle, { color: c.text, textDecorationLine: item.completed ? 'line-through' : 'none' }]}>{item.title}</Text>
-          <View style={styles.taskMetaRow}>
-            <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
-            <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
-            {item.tags && item.tags.map(tag => (
-              <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness }]}>{tag}</Text>
-            ))}
+          <Text style={[styles.taskTitle, item.completed && styles.completed]}>{item.title}</Text>
+          <View style={styles.tagsRow}>
+            {item.tags.map(tagName => {
+              const tag = allTags.find(t => t.name === tagName);
+              return tag ? (
+                <View key={tag.id} style={[styles.tag, { backgroundColor: tag.color }]}> 
+                  <Text style={styles.tagText}>#{tag.name}</Text>
+                </View>
+              ) : null;
+            })}
+          </View>
+          <View style={styles.metaRow}>
+            {item.repeatInterval !== 'none' && (
+              <Text style={styles.metaText}>
+                🔁 {REPEAT_LABELS[item.repeatInterval]}
+              </Text>
+            )}
+            {item.reminderTime && (
+              <Text style={styles.metaText}>
+                <Text style={{ color: '#2196f3' }}>⏰</Text> {item.reminderTime}
+              </Text>
+            )}
           </View>
         </View>
-        <IconButton icon="delete" onPress={() => handleDeleteTask(item.id)} iconColor={c.error} />
-      </View>
+        <IconButton
+          icon={item.reminderTime ? 'bell' : 'bell-off'}
+          iconColor={item.reminderTime ? '#2196f3' : '#aaa'}
+          onPress={() => handleToggleReminder(item)}
+          accessibilityLabel={item.reminderTime ? 'Отключить напоминание' : 'Включить напоминание'}
+        />
+        <IconButton icon="delete" onPress={() => handleDeleteTask(item.id)} />
+      </Card.Content>
     </Card>
   );
 
@@ -328,13 +312,15 @@ const TasksScreen = () => {
     if (date) setNewTaskDate(date);
   };
 
-  const handleInputFocus = () => setIsInputFocused(true);
-  const handleInputBlur = () => {
-    if (!newTask.trim()) setIsInputFocused(false);
+  const REPEAT_LABELS = {
+    none: t('repeat_none', 'Не повторять'),
+    daily: t('repeat_daily', 'Ежедневно'),
+    weekly: t('repeat_weekly', 'Еженедельно'),
+    monthly: t('repeat_monthly', 'Ежемесячно'),
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <Text variant="titleLarge" style={styles.header}>{t('daily_tasks')}</Text>
       {/* Выбор даты */}
       <View style={styles.dateRow}>
@@ -369,95 +355,118 @@ const TasksScreen = () => {
       )}
       {filteredTasks.length > 0 && (
         <View style={styles.progressContainer}>
-          <ProgressBar progress={progress} color={colors.primary} style={styles.progressBar} />
+          <ProgressBar progress={progress} color={theme.colors.primary} style={styles.progressBar} />
           <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
         </View>
       )}
-      <View style={styles.inputRow}>
-        <TextInput
-          value={newTask}
-          onChangeText={setNewTask}
-          placeholder={t('add_task_placeholder', 'Новая задача...')}
-          style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: roundness }]}
-          placeholderTextColor={c.placeholder}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
+      {inputVisible ? (
+        <View style={styles.inputRow}>
+          <TextInput
+            mode="outlined"
+            placeholder={t('new_task_placeholder', 'Новая задача...')}
+            value={newTask}
+            onChangeText={setNewTask}
+            style={styles.input}
+            autoFocus
+            onSubmitEditing={handleAddTask}
+          />
+          <IconButton
+            icon="calendar"
+            onPress={() => setShowDatePicker(true)}
+            style={styles.calendarButton}
+          />
+          <Button mode="contained" onPress={handleAddTask} style={styles.addButton}>
+            {t('add_task')}
+          </Button>
+        </View>
+      ) : (
+        <FAB
+          icon="plus"
+          label={t('new_task', 'Новая задача')}
+          onPress={() => {
+            setInputVisible(true);
+            setNewTaskDate(selectedDate);
+          }}
+          style={styles.fab}
         />
-        <Button mode="contained" onPress={handleAddTask} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: roundness }]} textColor={colors.onPrimary}>
-          +
-        </Button>
-      </View>
-      {/* Блок тонкой настройки — только при фокусе на поле ввода */}
-      {isInputFocused && (
+      )}
+      {inputVisible && (
         <View style={styles.optionsRow}>
-          {/* PrioritySelector с равномерным flex */}
-          <View style={styles.priorityRow}>
-            {(['low', 'medium', 'high'] as const).map((p, idx, arr) => (
-              <Chip
-                key={p}
-                selected={priority === p}
-                style={{ flex: 1, marginRight: idx < arr.length - 1 ? 8 : 0, backgroundColor: PRIORITY_COLORS[p] }}
-                textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-                onPress={() => setPriority(p)}
-              >
-                {PRIORITY_LABELS[p]}
-              </Chip>
-            ))}
-          </View>
-          {/* RepeatInterval */}
-          <View style={styles.repeatRow}>
-            {(['none', 'daily', 'weekly', 'monthly'] as const).map((interval) => (
-              <Chip
-                key={interval}
-                selected={repeatInterval === interval}
-                style={{ marginRight: 8, backgroundColor: repeatInterval === interval ? colors.primary : colors.surface }}
-                textStyle={{ color: repeatInterval === interval ? colors.onPrimary : c.text }}
-                onPress={() => setRepeatInterval(interval)}
-              >
-                {REPEAT_LABELS[interval]}
-              </Chip>
-            ))}
-          </View>
-          {/* Напоминание */}
-          <View style={styles.reminderRow}>
-            <Chip
-              icon="alarm"
-              selected={!!reminderTime}
-              style={{ backgroundColor: !!reminderTime ? colors.primary : colors.surface }}
-              textStyle={{ color: !!reminderTime ? colors.onPrimary : c.text }}
-              onPress={() => setShowTimePicker(true)}
-            >
-              {reminderTime ? reminderTime : t('set_reminder', 'Напоминание')}
-            </Chip>
-            {!!reminderTime && (
-              <IconButton icon="close" size={20} onPress={() => setReminderTime(undefined)} />
-            )}
-            {showTimePicker && (
-              <DateTimePicker
-                value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : new Date()}
-                mode="time"
-                is24Hour={true}
-                display="default"
-                onChange={(event, date) => {
-                  setShowTimePicker(false);
-                  if (date) {
-                    const h = date.getHours().toString().padStart(2, '0');
-                    const m = date.getMinutes().toString().padStart(2, '0');
-                    setReminderTime(`${h}:${m}`);
-                  }
-                }}
-              />
-            )}
-          </View>
+          <Text style={styles.optionsLabel}>{t('priority', 'Приоритет:')}</Text>
+          <PrioritySelector value={priority} onChange={setPriority} />
         </View>
       )}
-      <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
+      {inputVisible && (
+        <View style={styles.optionsRow}>
+          <Text style={styles.optionsLabel}>{t('tags', 'Метки:')}</Text>
+          <TagSelector
+            tags={allTags}
+            selectedTagIds={selectedTagIds}
+            onSelect={handleSelectTag}
+            onAdd={(name, color) => {
+              const tag = addGlobalTag(name, color);
+              setSelectedTagIds(prev => [...prev, tag.id]);
+            }}
+            onRemove={removeGlobalTag}
+          />
+        </View>
+      )}
+      {inputVisible && (
+        <View style={styles.optionsRow}>
+          <Text style={styles.optionsLabel}>{t('repeat', 'Повторять:')}</Text>
+          {(['none', 'daily', 'weekly', 'monthly'] as const).map(r => (
+            <Button
+              key={r}
+              mode={repeatInterval === r ? 'contained' : 'outlined'}
+              onPress={() => setRepeatInterval(r)}
+              style={styles.priorityButton}
+              labelStyle={{ color: repeatInterval === r ? '#fff' : '#555' }}
+              buttonColor={repeatInterval === r && r !== 'none' ? '#90caf9' : undefined}
+            >
+              {REPEAT_LABELS[r]}
+            </Button>
+          ))}
+        </View>
+      )}
+      {inputVisible && (
+        <View style={styles.optionsRow}>
+          <Text style={styles.optionsLabel}>{t('remind', 'Напомнить:')}</Text>
+          <Button
+            mode={reminderTime ? 'contained' : 'outlined'}
+            onPress={() => setShowTimePicker(true)}
+            style={styles.priorityButton}
+            labelStyle={{ color: reminderTime ? '#fff' : '#555' }}
+            buttonColor={reminderTime ? '#90caf9' : undefined}
+          >
+            {reminderTime ? `⏰ ${reminderTime}` : t('time', 'Время')}
+          </Button>
+          {reminderTime && (
+            <IconButton icon="close" size={16} onPress={() => setReminderTime(undefined)} />
+          )}
+        </View>
+      )}
+      {showTimePicker && (
+        <DateTimePicker
+          value={reminderTime ? new Date(`1970-01-01T${reminderTime}:00`) : new Date()}
+          mode="time"
+          is24Hour
+          display="default"
+          onChange={(event, date) => {
+            setShowTimePicker(false);
+            if (date) {
+              const h = date.getHours().toString().padStart(2, '0');
+              const m = date.getMinutes().toString().padStart(2, '0');
+              setReminderTime(`${h}:${m}`);
+            }
+          }}
+        />
+      )}
       <FlatList
         data={filteredTasks}
-        renderItem={renderItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <Divider style={[styles.divider, { backgroundColor: c.divider }]} />}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={<Text style={styles.empty}>Нет задач на выбранную дату</Text>}
       />
     </View>
   );
@@ -467,6 +476,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#fff',
   },
   header: {
     marginBottom: 16,
@@ -475,62 +485,52 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   input: {
     flex: 1,
     marginRight: 8,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 0,
-    elevation: 2,
   },
-  addBtn: {
-    minWidth: 48,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
+  fab: {
+    marginBottom: 16,
+    alignSelf: 'center',
   },
-  divider: {
-    height: 1,
-    marginVertical: 4,
-  },
-  listContent: {
+  list: {
     paddingBottom: 32,
   },
-  taskCard: {
+  card: {
     marginBottom: 8,
-    elevation: 2,
-    padding: 0,
   },
-  taskRow: {
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
   },
   taskTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 2,
+    marginLeft: 8,
   },
-  taskMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  completed: {
+    textDecorationLine: 'line-through',
+    color: '#888',
   },
-  taskMeta: {
-    fontSize: 13,
-    marginRight: 8,
+  empty: {
+    textAlign: 'center',
+    color: '#aaa',
+    marginTop: 32,
   },
-  tag: {
+  progressContainer: {
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+  },
+  progressText: {
+    textAlign: 'right',
+    color: '#888',
     fontSize: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginLeft: 4,
-    marginRight: 0,
-    fontWeight: 'bold',
+    marginTop: 2,
+    marginBottom: 4,
   },
   dateRow: {
     flexDirection: 'row',
@@ -548,39 +548,68 @@ const styles = StyleSheet.create({
     color: '#888',
     marginLeft: 4,
   },
-  progressContainer: {
-    marginBottom: 16,
+  addButton: {
+    height: 48,
+    justifyContent: 'center',
   },
-  progressBar: {
-    height: 8,
-    borderRadius: 4,
-  },
-  progressText: {
-    textAlign: 'right',
-    color: '#888',
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: 4,
+  priorityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+    marginLeft: 2,
   },
   optionsRow: {
-    marginBottom: 8,
-    gap: 12,
-  },
-  priorityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-  },
-  repeatRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flexWrap: 'wrap',
-    marginBottom: 8,
   },
-  reminderRow: {
+  optionsLabel: {
+    fontSize: 14,
+    marginRight: 8,
+    color: '#888',
+  },
+  priorityButton: {
+    marginRight: 4,
+    borderWidth: 1,
+  },
+  tagInput: {
+    flex: 1,
+    minWidth: 100,
+    marginRight: 8,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginRight: 4,
+    marginBottom: 2,
+  },
+  tagText: {
+    fontSize: 12,
+    color: '#555',
+    marginRight: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    flexWrap: 'wrap',
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#888',
+    marginRight: 8,
   },
 });
 

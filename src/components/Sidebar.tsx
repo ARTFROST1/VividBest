@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from 'react-native-paper';
 
 // Тип папки
 export interface FolderNode {
@@ -20,26 +21,33 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ folders, activeId, onSelect, onAddFolder }) => {
   const { t } = useTranslation();
+  const { colors, roundness } = useTheme();
   // Рекурсивный рендер папок и заметок
   const renderFolders = (items: FolderNode[], level = 0) =>
     items.map(item => (
       <View key={item.id} style={{ marginLeft: level * 16 }}>
         <TouchableOpacity
-          style={[styles.folderBtn, activeId === item.id && styles.activeFolder]}
+          style={[
+            styles.folderBtn,
+            { borderRadius: roundness, backgroundColor: activeId === item.id ? colors.primary + '22' : 'transparent' },
+          ]}
           onPress={() => onSelect(item.id)}
         >
-          <MaterialCommunityIcons name="folder" size={18} color="#F7B801" style={{ marginRight: 6 }} />
-          <Text style={styles.folderText}>{item.title}</Text>
+          <MaterialCommunityIcons name="folder" size={22} color={colors.secondary} style={{ marginRight: 10 }} />
+          <Text style={[styles.folderText, { color: colors.text }]}>{item.title}</Text>
         </TouchableOpacity>
         {/* Заметки внутри папки */}
         {item.notes && item.notes.map(note => (
           <TouchableOpacity
             key={note.id}
-            style={[styles.noteBtn, activeId === note.id && styles.activeNote]}
+            style={[
+              styles.noteBtn,
+              { borderRadius: roundness, backgroundColor: activeId === note.id ? colors.primary + '22' : 'transparent' },
+            ]}
             onPress={() => onSelect(note.id)}
           >
-            <MaterialCommunityIcons name="file-document-outline" size={16} color="#888" style={{ marginRight: 6 }} />
-            <Text style={styles.noteText}>{note.title}</Text>
+            <MaterialCommunityIcons name="file-document-outline" size={18} color={colors.placeholder} style={{ marginRight: 8 }} />
+            <Text style={[styles.noteText, { color: colors.text }]}>{note.title}</Text>
           </TouchableOpacity>
         ))}
         {/* Вложенные папки */}
@@ -48,12 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, activeId, onSelect, onAddFol
     ));
 
   return (
-    <View style={styles.sidebar}>
-      <Text style={styles.title}>{t('folders_and_notes', 'Папки и заметки')}</Text>
-      <ScrollView>
+    <View style={[styles.sidebar, { backgroundColor: colors.background, borderRightColor: colors.border }]}> 
+      <Text style={[styles.title, { color: colors.text }]}>{t('folders_and_notes', 'Папки и заметки')}</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {renderFolders(folders)}
-        <TouchableOpacity style={styles.addFolderBtn} onPress={onAddFolder}>
-          <Text style={styles.addFolderText}>+ {t('new_folder', 'Новая папка')}</Text>
+        <TouchableOpacity style={[styles.addFolderBtn, { borderRadius: roundness }]} onPress={onAddFolder}>
+          <Text style={[styles.addFolderText, { color: colors.primary }]}>+ {t('new_folder', 'Новая папка')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -63,60 +71,51 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, activeId, onSelect, onAddFol
 const styles = StyleSheet.create({
   sidebar: {
     width: 280,
-    backgroundColor: '#fafbfc',
     borderRightWidth: 1,
-    borderRightColor: '#e0e0e0',
     flex: 1,
-    paddingTop: 24,
+    paddingTop: 28,
     paddingHorizontal: 18,
   },
   title: {
     fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 18,
-    color: '#222',
+    fontSize: 18,
+    marginBottom: 22,
+    letterSpacing: 0.5,
   },
   folderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     marginBottom: 2,
+    marginTop: 2,
   },
   folderText: {
-    fontSize: 15,
-    color: '#222',
-  },
-  activeFolder: {
-    backgroundColor: '#e6f0ff',
+    fontSize: 16,
+    fontWeight: '500',
   },
   noteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 4,
-    borderRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     marginBottom: 2,
-    marginLeft: 18,
+    marginLeft: 22,
   },
   noteText: {
-    fontSize: 14,
-    color: '#555',
-  },
-  activeNote: {
-    backgroundColor: '#e6f0ff',
+    fontSize: 15,
+    fontWeight: '400',
   },
   addFolderBtn: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 6,
+    marginTop: 22,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'flex-start',
   },
   addFolderText: {
-    color: '#1976d2',
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 16,
+    letterSpacing: 0.2,
   },
 });
 

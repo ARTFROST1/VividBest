@@ -22,7 +22,8 @@ const customActions = {
 };
 
 export default function NoteEditorScreen({ route, navigation }) {
-  const { colors } = useTheme();
+  const { colors, roundness } = useTheme();
+  const c = colors as any;
   const { t } = useTranslation();
   const { id, title: initialTitle } = route?.params || {};
   const [title, setTitle] = useState(initialTitle || '');
@@ -88,12 +89,12 @@ export default function NoteEditorScreen({ route, navigation }) {
       fetchLinkPreview(url).then(preview => {
         setLoadingLinks((prev) => prev.filter(u => u !== url));
         if (preview && richText.current) {
-          const html = `<div data-link-preview=\"${url}\" style=\"border:1px solid #ccc;border-radius:8px;padding:8px;margin:8px 0;display:flex;align-items:center;gap:8px;width:100%;max-width:100%;box-sizing:border-box;\">
+          const html = `<div data-link-preview=\"${url}\" style=\"border:1px solid #333;border-radius:8px;padding:8px;margin:8px 0;display:flex;align-items:center;gap:8px;width:100%;max-width:100%;box-sizing:border-box;background:#23232A;\">
             ${preview.image ? `<img src='${preview.image}' style='width:48px;height:48px;object-fit:cover;border-radius:6px;margin-right:8px;flex-shrink:0;' />` : ''}
             <div style='flex:1;min-width:0;'>
-              <div style='font-weight:bold;font-size:15px;line-height:1.2;word-break:break-word;'>${preview.title || url}</div>
-              <div style='font-size:13px;color:#666;line-height:1.2;word-break:break-word;'>${preview.description || ''}</div>
-              <a href='${url}' style='font-size:12px;color:#1976d2;text-decoration:underline;word-break:break-all;'>${url}</a>
+              <div style='font-weight:bold;font-size:15px;line-height:1.2;word-break:break-word;color:#fff;'>${preview.title || url}</div>
+              <div style='font-size:13px;color:#aaa;line-height:1.2;word-break:break-word;'>${preview.description || ''}</div>
+              <a href='${url}' style='font-size:12px;color:#F7B801;text-decoration:underline;word-break:break-all;'>${url}</a>
             </div>
           </div>`;
           // Заменяем индикатор на превью
@@ -119,26 +120,29 @@ export default function NoteEditorScreen({ route, navigation }) {
   }, [content]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title={t('edit_note', 'Редактирование заметки')} />
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <Appbar.Header style={{ backgroundColor: c.background, elevation: 0 }}>
+        <Appbar.BackAction color={c.primary} onPress={() => navigation.goBack()} />
+        <Appbar.Content title={<Text style={{ color: c.text, fontWeight: 'bold', fontSize: 22 }}>{title || t('edit_note', 'Редактирование заметки')}</Text>} />
       </Appbar.Header>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: c.background }]} keyboardShouldPersistTaps="handled">
         <TextInput
           label={t('note_title', 'Заголовок')}
           value={title}
           onChangeText={setTitle}
-          mode="outlined"
-          style={styles.titleInput}
+          mode="flat"
+          style={[styles.titleInput, { backgroundColor: c.background, color: c.text, borderRadius: roundness, fontWeight: 'bold', fontSize: 28 }]}
+          underlineColor={c.primary}
+          placeholderTextColor={c.placeholder}
+          theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
         />
         <RichEditor
           ref={richText}
           initialContentHTML={content}
           onChange={setContent}
-          style={{ minHeight: 200, borderWidth: 1, borderColor: colors.outline, borderRadius: 8, marginBottom: 16 }}
+          style={{ minHeight: 200, borderWidth: 1, borderColor: c.border, borderRadius: roundness, marginBottom: 16, backgroundColor: c.surface }}
           placeholder={t('note_text_placeholder', 'Текст заметки...')}
-          editorStyle={{ color: colors.onBackground }}
+          editorStyle={{ color: c.text, backgroundColor: c.surface }}
         />
       </ScrollView>
       <KeyboardAvoidingView
@@ -157,11 +161,13 @@ export default function NoteEditorScreen({ route, navigation }) {
             actions.checkboxList,
             actions.code,
           ]}
-          style={{ backgroundColor: '#181818', borderTopWidth: 1, borderColor: '#333' }}
+          style={{ backgroundColor: c.background, borderTopWidth: 1, borderColor: c.border, paddingBottom: 4, paddingTop: 4 }}
+          iconTint={c.primary}
+          selectedIconTint={c.primary}
         />
       </KeyboardAvoidingView>
       <View style={{ alignItems: 'center', padding: 4 }}>
-        <Text style={{ color: saveStatus === 'saving' ? '#888' : '#4caf50', fontSize: 12 }}>
+        <Text style={{ color: saveStatus === 'saving' ? c.placeholder : '#4caf50', fontSize: 12 }}>
           {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
         </Text>
       </View>

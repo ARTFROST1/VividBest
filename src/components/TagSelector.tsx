@@ -18,6 +18,8 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ tags, selectedTagIds, 
   const [input, setInput] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const theme = useTheme();
+  const { colors, roundness } = theme;
+  const c = colors as any;
   const { t } = useTranslation();
 
   return (
@@ -27,7 +29,13 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ tags, selectedTagIds, 
           <Chip
             key={tag.id}
             selected={selectedTagIds.includes(tag.id)}
-            style={{ backgroundColor: tag.color, marginRight: 4, marginBottom: 4 }}
+            style={{
+              backgroundColor: selectedTagIds.includes(tag.id) ? c.primary : tag.color,
+              marginRight: 4,
+              marginBottom: 4,
+              borderRadius: roundness,
+            }}
+            textStyle={{ color: selectedTagIds.includes(tag.id) ? c.onPrimary : c.chipText, fontWeight: 'bold' }}
             onPress={() => onSelect(tag.id)}
             onClose={() => onRemove(tag.id)}
           >
@@ -40,22 +48,25 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ tags, selectedTagIds, 
           value={input}
           onChangeText={setInput}
           placeholder={t('new_tag_placeholder', 'Новая метка')}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: c.surface, color: c.text, borderRadius: roundness }]}
+          placeholderTextColor={c.placeholder}
+          theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
         />
         <View style={styles.colors}>
-          {COLORS.map(c => (
+          {COLORS.map(cColor => (
             <IconButton
-              key={c}
+              key={cColor}
               icon="circle"
-              color={c}
+              iconColor={cColor}
               size={20}
-              style={color === c ? styles.selectedColor : undefined}
-              onPress={() => setColor(c)}
+              style={color === cColor ? [styles.selectedColor, { borderColor: c.primary, borderRadius: 20, borderWidth: 2 }] : undefined}
+              onPress={() => setColor(cColor)}
             />
           ))}
         </View>
         <IconButton
           icon="plus"
+          iconColor={c.primary}
           onPress={() => {
             if (input.trim()) {
               onAdd(input.trim(), color);
@@ -74,5 +85,5 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   input: { flex: 1, marginRight: 8 },
   colors: { flexDirection: 'row', alignItems: 'center' },
-  selectedColor: { borderWidth: 2, borderColor: '#000' },
+  selectedColor: { borderWidth: 2 },
 }); 

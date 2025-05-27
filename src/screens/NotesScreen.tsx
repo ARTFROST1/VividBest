@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar } from 'react-native-paper';
+import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
@@ -123,6 +123,8 @@ function moveItem(items: NoteItem[], itemId: string, targetFolderId: string | nu
 
 const NotesScreen = () => {
   const { t } = useTranslation();
+  const { colors, roundness } = useTheme();
+  const c = colors as any;
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
   const [showDialog, setShowDialog] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -344,26 +346,26 @@ const NotesScreen = () => {
     // Только заметки (не папки)
     const notes = items.filter(item => !item.isFolder);
     if (notes.length === 0) {
-      return <Text style={styles.emptyText}>{t('no_notes', 'Нет заметок')}</Text>;
+      return <Text style={[styles.emptyText, { color: c.placeholder }]}>{t('no_notes', 'Нет заметок')}</Text>;
     }
     return notes.map(note => (
       <TouchableOpacity
         key={note.id}
-        style={styles.noteCard}
+        style={[styles.noteCard, { backgroundColor: c.surface, borderRadius: roundness, borderColor: c.border }]}
         onPress={() => navigation.navigate('NoteEditor', { id: note.id, title: note.title })}
       >
-        <Text style={styles.noteTitle}>{note.title}</Text>
-        <Text style={styles.noteSubtitle} numberOfLines={1}>Краткое описание или начало заметки...</Text>
+        <Text style={[styles.noteTitle, { color: c.text }]} numberOfLines={1}>{note.title}</Text>
+        <Text style={[styles.noteSubtitle, { color: c.placeholder }]} numberOfLines={1}>Краткое описание или начало заметки...</Text>
       </TouchableOpacity>
     ));
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       {/* AppBar с кнопкой-гамбургером */}
-      <Appbar.Header style={{ backgroundColor: '#fff', elevation: 0 }}>
-        <Appbar.Action icon="menu" onPress={() => setSidebarVisible(true)} />
-        <Appbar.Content title={t('all_notes')} />
+      <Appbar.Header style={{ backgroundColor: c.background, elevation: 0 }}>
+        <Appbar.Action icon="menu" color={c.primary} onPress={() => setSidebarVisible(true)} />
+        <Appbar.Content title={<Text style={{ color: c.text, fontWeight: 'bold', fontSize: 28, letterSpacing: 0.5 }}>Notes</Text>} />
       </Appbar.Header>
       {/* Sidebar для web (открывается по кнопке) */}
       {isWeb && sidebarVisible && (
@@ -400,14 +402,17 @@ const NotesScreen = () => {
         </View>
       )}
       {/* Основной контент */}
-      <View style={styles.notesMain}>
+      <View style={[styles.notesMain, { backgroundColor: c.background }]}>
         {/* Поиск */}
         <View style={styles.searchBlock}>
           <Searchbar
             placeholder={t('search_notes_placeholder', 'Поиск заметок...')}
             value={search}
             onChangeText={setSearch}
-            style={styles.searchInput}
+            style={[styles.searchInput, { backgroundColor: c.surface, color: c.text, borderRadius: roundness, borderColor: c.border }]}
+            inputStyle={{ color: c.text }}
+            iconColor={c.placeholder}
+            placeholderTextColor={c.placeholder}
           />
         </View>
         {/* Список заметок */}
@@ -417,31 +422,33 @@ const NotesScreen = () => {
         {/* Кнопка добавить */}
         <Button
           mode="contained"
-          style={styles.addNoteBtn}
+          style={[styles.addNoteBtn, { backgroundColor: c.primary, borderRadius: roundness }]}
           contentStyle={{ height: 48 }}
-          labelStyle={{ fontWeight: 'bold', fontSize: 16 }}
+          labelStyle={{ fontWeight: 'bold', fontSize: 16, color: c.onPrimary }}
           onPress={() => setShowDialog(true)}
         >
           + {t('new_note', 'Новая заметка')}
         </Button>
         {/* Диалог создания заметки/папки */}
         <Portal>
-          <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)}>
-            <Dialog.Title>{t('create_new', 'Новая')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
+          <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
+            <Dialog.Title style={{ color: c.text }}>{t('create_new', 'Новая')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
                 label={t('name', 'Название')}
                 value={newTitle}
                 onChangeText={setNewTitle}
                 autoFocus
+                style={{ backgroundColor: c.background, color: c.text, borderRadius: roundness }}
+                placeholderTextColor={c.placeholder}
               />
-              <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }}>
+              <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
                 {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
               </Button>
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setShowDialog(false)}>{t('cancel', 'Отмена')}</Button>
-              <Button onPress={handleAdd}>{t('create', 'Создать')}</Button>
+              <Button onPress={() => setShowDialog(false)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
+              <Button onPress={handleAdd} textColor={c.primary}>{t('create', 'Создать')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -453,11 +460,9 @@ const NotesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   notesMain: {
     flex: 1,
-    backgroundColor: '#fff',
     paddingHorizontal: 0,
     paddingTop: 0,
     paddingBottom: 0,
@@ -466,50 +471,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 8,
-    backgroundColor: '#fff',
   },
   searchInput: {
-    backgroundColor: '#fafbfc',
-    borderRadius: 8,
-    elevation: 0,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     fontSize: 16,
+    elevation: 0,
   },
   notesListBlock: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 0,
     paddingTop: 0,
-    backgroundColor: '#fff',
   },
   noteCard: {
-    backgroundColor: '#fafbfc',
-    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   noteTitle: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#222',
     marginBottom: 2,
   },
   noteSubtitle: {
     fontSize: 14,
-    color: '#888',
   },
   addNoteBtn: {
     marginHorizontal: 24,
     marginVertical: 18,
-    borderRadius: 8,
-    backgroundColor: '#1976d2',
-    elevation: 0,
+    elevation: 2,
   },
   emptyText: {
-    color: '#aaa',
     textAlign: 'center',
     marginTop: 32,
     fontSize: 16,
@@ -521,9 +514,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 280,
     zIndex: 10,
-    backgroundColor: '#fafbfc',
-    borderRightWidth: 1,
-    borderRightColor: '#e0e0e0',
   },
   overlayBg: {
     flex: 1,
@@ -540,7 +530,6 @@ const styles = StyleSheet.create({
   },
   mobileSidebar: {
     width: 280,
-    backgroundColor: '#fafbfc',
     height: '100%',
     shadowColor: '#000',
     shadowOpacity: 0.1,
