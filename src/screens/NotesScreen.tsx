@@ -4,6 +4,7 @@ import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, S
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
+import { useTranslation } from 'react-i18next';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -121,6 +122,7 @@ function moveItem(items: NoteItem[], itemId: string, targetFolderId: string | nu
 }
 
 const NotesScreen = () => {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
   const [showDialog, setShowDialog] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -256,9 +258,9 @@ const NotesScreen = () => {
   function renderKanban(notes: NoteItem[]) {
     const allNotes = flattenNotes(notes);
     const columns: { key: NoteStatus; title: string }[] = [
-      { key: 'todo', title: 'To Do' },
-      { key: 'inprogress', title: 'In Progress' },
-      { key: 'done', title: 'Done' },
+      { key: 'todo', title: t('kanban_todo', 'To Do') },
+      { key: 'inprogress', title: t('kanban_inprogress', 'In Progress') },
+      { key: 'done', title: t('kanban_done', 'Done') },
     ];
     return (
       <ScrollView horizontal style={{ flex: 1 }}>
@@ -342,7 +344,7 @@ const NotesScreen = () => {
     // Только заметки (не папки)
     const notes = items.filter(item => !item.isFolder);
     if (notes.length === 0) {
-      return <Text style={styles.emptyText}>Нет заметок</Text>;
+      return <Text style={styles.emptyText}>{t('no_notes', 'Нет заметок')}</Text>;
     }
     return notes.map(note => (
       <TouchableOpacity
@@ -361,7 +363,7 @@ const NotesScreen = () => {
       {/* AppBar с кнопкой-гамбургером */}
       <Appbar.Header style={{ backgroundColor: '#fff', elevation: 0 }}>
         <Appbar.Action icon="menu" onPress={() => setSidebarVisible(true)} />
-        <Appbar.Content title="Все заметки" />
+        <Appbar.Content title={t('all_notes')} />
       </Appbar.Header>
       {/* Sidebar для web (открывается по кнопке) */}
       {isWeb && sidebarVisible && (
@@ -374,7 +376,7 @@ const NotesScreen = () => {
                 setActiveSidebarFilter(id);
                 setSidebarVisible(false);
               }}
-              onAddFolder={() => alert('Добавить папку (реализовать)')}
+              onAddFolder={() => alert(t('add_folder', 'Добавить папку (реализовать)'))}
             />
           </View>
           <TouchableOpacity style={styles.overlayBg} onPress={() => setSidebarVisible(false)} />
@@ -392,7 +394,7 @@ const NotesScreen = () => {
                 setActiveSidebarFilter(id);
                 setSidebarVisible(false);
               }}
-              onAddFolder={() => alert('Добавить папку (реализовать)')}
+              onAddFolder={() => alert(t('add_folder', 'Добавить папку (реализовать)'))}
             />
           </View>
         </View>
@@ -402,7 +404,7 @@ const NotesScreen = () => {
         {/* Поиск */}
         <View style={styles.searchBlock}>
           <Searchbar
-            placeholder="Поиск заметок..."
+            placeholder={t('search_notes_placeholder', 'Поиск заметок...')}
             value={search}
             onChangeText={setSearch}
             style={styles.searchInput}
@@ -420,26 +422,26 @@ const NotesScreen = () => {
           labelStyle={{ fontWeight: 'bold', fontSize: 16 }}
           onPress={() => setShowDialog(true)}
         >
-          + Новая заметка
+          + {t('new_note', 'Новая заметка')}
         </Button>
         {/* Диалог создания заметки/папки */}
         <Portal>
           <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)}>
-            <Dialog.Title>Новая {isFolder ? 'папка' : 'заметка'}</Dialog.Title>
+            <Dialog.Title>{t('create_new', 'Новая')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
-                label="Название"
+                label={t('name', 'Название')}
                 value={newTitle}
                 onChangeText={setNewTitle}
                 autoFocus
               />
               <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }}>
-                {isFolder ? 'Создать как заметку' : 'Создать как папку'}
+                {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
               </Button>
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setShowDialog(false)}>Отмена</Button>
-              <Button onPress={handleAdd}>Создать</Button>
+              <Button onPress={() => setShowDialog(false)}>{t('cancel', 'Отмена')}</Button>
+              <Button onPress={handleAdd}>{t('create', 'Создать')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>

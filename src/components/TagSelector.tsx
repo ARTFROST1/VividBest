@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Chip, TextInput, IconButton, useTheme } from 'react-native-paper';
 import { Tag } from '../hooks/useTags';
+import { useTranslation } from 'react-i18next';
 
 const COLORS = ['#F44336', '#FFC107', '#8BC34A', '#2196F3', '#9C27B0', '#FF9800', '#607D8B'];
 
@@ -17,6 +18,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ tags, selectedTagIds, 
   const [input, setInput] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const theme = useTheme();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -37,7 +39,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({ tags, selectedTagIds, 
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Новая метка"
+          placeholder={t('new_tag_placeholder', 'Новая метка')}
           style={styles.input}
         />
         <View style={styles.colors}>

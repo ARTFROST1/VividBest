@@ -3,6 +3,7 @@ import { View, StyleSheet, TextInput as RNTextInput, Platform } from 'react-nati
 import { Text, Button, useTheme, TextInput, HelperText } from 'react-native-paper';
 import * as Notifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system';
+import { useTranslation } from 'react-i18next';
 
 interface WelcomeScreenProps {
   onStart: () => void;
@@ -10,6 +11,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [notifGranted, setNotifGranted] = useState(false);
   const [fsGranted, setFsGranted] = useState(Platform.OS === 'web');
   const [loading, setLoading] = useState(true);
@@ -35,16 +37,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
-      <Text variant="headlineLarge" style={styles.title}>Добро пожаловать в Vivid!</Text>
+      <Text variant="headlineLarge" style={styles.title}>{t('welcome')}</Text>
       <Text variant="bodyLarge" style={styles.subtitle}>
-        Ваше пространство для заметок, задач и напоминаний с поддержкой ИИ и Markdown.
+        {t('welcome_subtitle', 'Ваше пространство для заметок, задач и напоминаний с поддержкой ИИ и Markdown.')}
       </Text>
       <Button mode="contained" onPress={onStart} disabled={loading} style={styles.button} loading={loading}>
-        Начать
+        {t('start', 'Начать')}
       </Button>
       {!canStart && !loading && (
         <Text style={{ marginTop: 16, color: theme.colors.error }}>
-          Необходимо разрешить доступ к уведомлениям и хранилищу для продолжения.
+          {t('permissions_required', 'Необходимо разрешить доступ к уведомлениям и хранилищу для продолжения.')}
         </Text>
       )}
     </View>

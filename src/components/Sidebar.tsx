@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 // Тип папки
 export interface FolderNode {
@@ -18,6 +19,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ folders, activeId, onSelect, onAddFolder }) => {
+  const { t } = useTranslation();
   // Рекурсивный рендер папок и заметок
   const renderFolders = (items: FolderNode[], level = 0) =>
     items.map(item => (
@@ -47,11 +49,11 @@ const Sidebar: React.FC<SidebarProps> = ({ folders, activeId, onSelect, onAddFol
 
   return (
     <View style={styles.sidebar}>
-      <Text style={styles.title}>Папки и заметки</Text>
+      <Text style={styles.title}>{t('folders_and_notes', 'Папки и заметки')}</Text>
       <ScrollView>
         {renderFolders(folders)}
         <TouchableOpacity style={styles.addFolderBtn} onPress={onAddFolder}>
-          <Text style={styles.addFolderText}>+ Новая папка</Text>
+          <Text style={styles.addFolderText}>+ {t('new_folder', 'Новая папка')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

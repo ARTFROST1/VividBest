@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadNoteImage } from '../services/notesService';
 import { fetchLinkPreview } from '../utils/linkPreview';
 import { debounce } from '../utils/debounce';
+import { useTranslation } from 'react-i18next';
 
 const formattingButtons = [
   { icon: 'format-bold', markdown: '**', tooltip: 'Жирный' },
@@ -22,6 +23,7 @@ const customActions = {
 
 export default function NoteEditorScreen({ route, navigation }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { id, title: initialTitle } = route?.params || {};
   const [title, setTitle] = useState(initialTitle || '');
   const [content, setContent] = useState('');
@@ -95,12 +97,22 @@ export default function NoteEditorScreen({ route, navigation }) {
             </div>
           </div>`;
           // Заменяем индикатор на превью
-          setContent((prev) => prev.replace(new RegExp(`<span data-link-loading=\?"${url}\?"[^>]*>[^<]*<\/span>`), html));
-          richText.current.setContentHTML(content.replace(new RegExp(`<span data-link-loading=\?"${url}\?"[^>]*>[^<]*<\/span>`), html));
+          setContent((prev) => {
+            const newContent = prev.replace(new RegExp(`<span data-link-loading=\"${url}\"[^>]*>[^<]*<\/span>`), html);
+            if (richText.current) {
+              richText.current.setContentHTML(newContent);
+            }
+            return newContent;
+          });
         } else {
           // Если не удалось получить превью — убираем индикатор
-          setContent((prev) => prev.replace(new RegExp(`<span data-link-loading=\?"${url}\?"[^>]*>[^<]*<\/span>`), url));
-          if (richText.current) richText.current.setContentHTML(content.replace(new RegExp(`<span data-link-loading=\?"${url}\?"[^>]*>[^<]*<\/span>`), url));
+          setContent((prev) => {
+            const newContent = prev.replace(new RegExp(`<span data-link-loading=\"${url}\"[^>]*>[^<]*<\/span>`), url);
+            if (richText.current) {
+              richText.current.setContentHTML(newContent);
+            }
+            return newContent;
+          });
         }
       });
     });
@@ -110,11 +122,11 @@ export default function NoteEditorScreen({ route, navigation }) {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Редактирование заметки" />
+        <Appbar.Content title={t('edit_note', 'Редактирование заметки')} />
       </Appbar.Header>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <TextInput
-          label="Заголовок"
+          label={t('note_title', 'Заголовок')}
           value={title}
           onChangeText={setTitle}
           mode="outlined"
@@ -125,7 +137,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           initialContentHTML={content}
           onChange={setContent}
           style={{ minHeight: 200, borderWidth: 1, borderColor: colors.outline, borderRadius: 8, marginBottom: 16 }}
-          placeholder="Текст заметки..."
+          placeholder={t('note_text_placeholder', 'Текст заметки...')}
           editorStyle={{ color: colors.onBackground }}
         />
       </ScrollView>
@@ -150,7 +162,7 @@ export default function NoteEditorScreen({ route, navigation }) {
       </KeyboardAvoidingView>
       <View style={{ alignItems: 'center', padding: 4 }}>
         <Text style={{ color: saveStatus === 'saving' ? '#888' : '#4caf50', fontSize: 12 }}>
-          {saveStatus === 'saving' ? 'Сохраняется...' : 'Сохранено'}
+          {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
         </Text>
       </View>
     </View>

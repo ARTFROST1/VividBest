@@ -5,6 +5,9 @@
       "expo-router"
     ],
     "name": "Vivid",
-    "slug": "Vivid"
+    "slug": "Vivid",
+    "android": {
+      "package": "com.vivid.evokak"
+    }
   }
 }

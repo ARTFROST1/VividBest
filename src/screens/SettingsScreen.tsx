@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Switch, RadioButton, List, Divider, Button } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useThemeToggle } from '../context/ThemeToggleContext';
+import { useTranslation } from 'react-i18next';
+import i18n from '../locales/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SettingsScreen = () => {
   const { isDark, toggleTheme } = useThemeToggle();
-  const [language, setLanguage] = useState<'ru' | 'en'>('ru');
+  const { t } = useTranslation();
+  const [language, setLanguage] = useState<'ru' | 'en'>(
+    (i18n.language === 'ru' || i18n.language === 'en') ? i18n.language : 'en'
+  );
   const [sortOrder, setSortOrder] = useState<'date' | 'priority' | 'alpha'>('date');
   // Уведомления
   const [notificationsSound, setNotificationsSound] = useState(true);
@@ -21,22 +27,64 @@ const SettingsScreen = () => {
   const [fontSize, setFontSize] = useState(16);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
 
+  useEffect(() => {
+    // Загрузка настроек при запуске
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem('userSettings');
+        if (saved) {
+          const s = JSON.parse(saved);
+          if (s.language) setLanguage(s.language);
+          if (s.sortOrder) setSortOrder(s.sortOrder);
+          if (s.notificationsSound !== undefined) setNotificationsSound(s.notificationsSound);
+          if (s.notificationsImportantOnly !== undefined) setNotificationsImportantOnly(s.notificationsImportantOnly);
+          if (s.dndStart) setDndStart(s.dndStart);
+          if (s.dndEnd) setDndEnd(s.dndEnd);
+          if (s.autosave !== undefined) setAutosave(s.autosave);
+          if (s.font) setFont(s.font);
+          if (s.fontSize) setFontSize(s.fontSize);
+          if (s.showLineNumbers !== undefined) setShowLineNumbers(s.showLineNumbers);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+  }, []);
+
+  useEffect(() => {
+    // Сохраняем настройки при изменении
+    const settings = {
+      language,
+      sortOrder,
+      notificationsSound,
+      notificationsImportantOnly,
+      dndStart,
+      dndEnd,
+      autosave,
+      font,
+      fontSize,
+      showLineNumbers,
+    };
+    AsyncStorage.setItem('userSettings', JSON.stringify(settings));
+  }, [language, sortOrder, notificationsSound, notificationsImportantOnly, dndStart, dndEnd, autosave, font, fontSize, showLineNumbers]);
+
   // TODO: интеграция с глобальным состоянием темы и языка
 
   return (
     <View style={styles.container}>
-      <Text variant="titleLarge" style={styles.header}>Настройки</Text>
+      <Text variant="titleLarge" style={styles.header}>{t('settings')}</Text>
       <List.Section>
-        <List.Subheader>Тема</List.Subheader>
+        <List.Subheader>{t('theme')}</List.Subheader>
         <View style={styles.row}>
-          <Text>Тёмная тема</Text>
+          <Text>{t('dark')}</Text>
           <Switch value={isDark} onValueChange={toggleTheme} />
         </View>
       </List.Section>
       <Divider style={styles.divider} />
       <List.Section>
-        <List.Subheader>Язык интерфейса</List.Subheader>
-        <RadioButton.Group onValueChange={v => setLanguage(v as 'ru' | 'en')} value={language}>
+        <List.Subheader>{t('language')}</List.Subheader>
+        <RadioButton.Group onValueChange={v => {
+          setLanguage(v as 'ru' | 'en');
+          i18n.changeLanguage(v);
+        }} value={language}>
           <View style={styles.row}>
             <RadioButton value="ru" />
             <Text>Русский</Text>
@@ -49,35 +97,35 @@ const SettingsScreen = () => {
       </List.Section>
       <Divider style={styles.divider} />
       <List.Section>
-        <List.Subheader>Порядок задач</List.Subheader>
+        <List.Subheader>{t('sort_order', 'Порядок задач')}</List.Subheader>
         <RadioButton.Group onValueChange={v => setSortOrder(v as 'date' | 'priority' | 'alpha')} value={sortOrder}>
           <View style={styles.row}>
             <RadioButton value="date" />
-            <Text>По дате</Text>
+            <Text>{t('sort_by_date', 'По дате')}</Text>
           </View>
           <View style={styles.row}>
             <RadioButton value="priority" />
-            <Text>По приоритету</Text>
+            <Text>{t('sort_by_priority', 'По приоритету')}</Text>
           </View>
           <View style={styles.row}>
             <RadioButton value="alpha" />
-            <Text>По алфавиту</Text>
+            <Text>{t('sort_by_alpha', 'По алфавиту')}</Text>
           </View>
         </RadioButton.Group>
       </List.Section>
       <Divider style={styles.divider} />
       <List.Section>
-        <List.Subheader>Уведомления</List.Subheader>
+        <List.Subheader>{t('notifications', 'Уведомления')}</List.Subheader>
         <View style={styles.row}>
-          <Text>Звук</Text>
+          <Text>{t('sound', 'Звук')}</Text>
           <Switch value={notificationsSound} onValueChange={setNotificationsSound} />
         </View>
         <View style={styles.row}>
-          <Text>Только важные</Text>
+          <Text>{t('important_only', 'Только важные')}</Text>
           <Switch value={notificationsImportantOnly} onValueChange={setNotificationsImportantOnly} />
         </View>
         <View style={styles.row}>
-          <Text>Не беспокоить</Text>
+          <Text>{t('dnd', 'Не беспокоить')}</Text>
           <Button mode="outlined" onPress={() => setShowDndStartPicker(true)} style={styles.timeButton}>{dndStart}</Button>
           <Text style={{ marginHorizontal: 4 }}>–</Text>
           <Button mode="outlined" onPress={() => setShowDndEndPicker(true)} style={styles.timeButton}>{dndEnd}</Button>
@@ -117,38 +165,38 @@ const SettingsScreen = () => {
       </List.Section>
       <Divider style={styles.divider} />
       <List.Section>
-        <List.Subheader>Редактор</List.Subheader>
+        <List.Subheader>{t('editor', 'Редактор')}</List.Subheader>
         <View style={styles.row}>
-          <Text>Автосохранение</Text>
+          <Text>{t('autosave', 'Автосохранение')}</Text>
           <Switch value={autosave} onValueChange={setAutosave} />
         </View>
         <View style={styles.row}>
-          <Text>Шрифт</Text>
+          <Text>{t('font', 'Шрифт')}</Text>
           <RadioButton.Group onValueChange={v => setFont(v as any)} value={font}>
             <View style={styles.fontRow}>
               <RadioButton value="system" />
-              <Text>Системный</Text>
+              <Text>{t('font_system', 'Системный')}</Text>
               <RadioButton value="monospace" />
-              <Text>Моноширинный</Text>
+              <Text>{t('font_monospace', 'Моноширинный')}</Text>
               <RadioButton value="serif" />
-              <Text>С засечками</Text>
+              <Text>{t('font_serif', 'С засечками')}</Text>
             </View>
           </RadioButton.Group>
         </View>
         <View style={styles.row}>
-          <Text>Размер шрифта</Text>
+          <Text>{t('font_size', 'Размер шрифта')}</Text>
           <Button mode="outlined" onPress={() => setFontSize(s => Math.max(10, s - 1))}>-</Button>
           <Text style={{ marginHorizontal: 8 }}>{fontSize}</Text>
           <Button mode="outlined" onPress={() => setFontSize(s => Math.min(32, s + 1))}>+</Button>
         </View>
         <View style={styles.row}>
-          <Text>Номера строк</Text>
+          <Text>{t('line_numbers', 'Номера строк')}</Text>
           <Switch value={showLineNumbers} onValueChange={setShowLineNumbers} />
         </View>
       </List.Section>
       <Divider style={styles.divider} />
       <Button mode="outlined" style={styles.button} onPress={() => {}} disabled>
-        Выйти из аккаунта
+        {t('logout', 'Выйти из аккаунта')}
       </Button>
     </View>
   );

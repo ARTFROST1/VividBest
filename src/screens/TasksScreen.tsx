@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
 import { TagSelector } from '../components/TagSelector';
 import { PrioritySelector } from '../components/PrioritySelector';
+import { useTranslation } from 'react-i18next';
 
 interface Task {
   id: string;
@@ -69,6 +70,7 @@ const TasksScreen = () => {
     updateTag: updateGlobalTag,
   } = useTags();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -126,7 +128,7 @@ const TasksScreen = () => {
     if (status !== 'granted') {
       const { status: reqStatus } = await Notifications.requestPermissionsAsync();
       if (reqStatus !== 'granted') {
-        alert('Разрешение на уведомления не выдано. Напоминания не будут работать.');
+        alert(t('notification_permission_denied', 'Разрешение на уведомления не выдано. Напоминания не будут работать.'));
         return false;
       }
     }
@@ -310,9 +312,16 @@ const TasksScreen = () => {
     if (date) setNewTaskDate(date);
   };
 
+  const REPEAT_LABELS = {
+    none: t('repeat_none', 'Не повторять'),
+    daily: t('repeat_daily', 'Ежедневно'),
+    weekly: t('repeat_weekly', 'Еженедельно'),
+    monthly: t('repeat_monthly', 'Ежемесячно'),
+  };
+
   return (
     <View style={styles.container}>
-      <Text variant="titleLarge" style={styles.header}>Ежедневные задачи</Text>
+      <Text variant="titleLarge" style={styles.header}>{t('daily_tasks')}</Text>
       {/* Выбор даты */}
       <View style={styles.dateRow}>
         <Button
@@ -320,14 +329,14 @@ const TasksScreen = () => {
           onPress={() => setSelectedDate(new Date())}
           style={styles.dateButton}
         >
-          Сегодня
+          {t('today', 'Сегодня')}
         </Button>
         <Button
           mode={formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? 'contained' : 'outlined'}
           onPress={() => setSelectedDate(addDays(new Date(), 1))}
           style={styles.dateButton}
         >
-          Завтра
+          {t('tomorrow', 'Завтра')}
         </Button>
         <IconButton
           icon="calendar"
@@ -347,14 +356,14 @@ const TasksScreen = () => {
       {filteredTasks.length > 0 && (
         <View style={styles.progressContainer}>
           <ProgressBar progress={progress} color={theme.colors.primary} style={styles.progressBar} />
-          <Text style={styles.progressText}>{Math.round(progress * 100)}% выполнено</Text>
+          <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
         </View>
       )}
       {inputVisible ? (
         <View style={styles.inputRow}>
           <TextInput
             mode="outlined"
-            placeholder="Новая задача..."
+            placeholder={t('new_task_placeholder', 'Новая задача...')}
             value={newTask}
             onChangeText={setNewTask}
             style={styles.input}
@@ -367,13 +376,13 @@ const TasksScreen = () => {
             style={styles.calendarButton}
           />
           <Button mode="contained" onPress={handleAddTask} style={styles.addButton}>
-            Добавить
+            {t('add_task')}
           </Button>
         </View>
       ) : (
         <FAB
           icon="plus"
-          label="Новая задача"
+          label={t('new_task', 'Новая задача')}
           onPress={() => {
             setInputVisible(true);
             setNewTaskDate(selectedDate);
@@ -383,13 +392,13 @@ const TasksScreen = () => {
       )}
       {inputVisible && (
         <View style={styles.optionsRow}>
-          <Text style={styles.optionsLabel}>Приоритет:</Text>
+          <Text style={styles.optionsLabel}>{t('priority', 'Приоритет:')}</Text>
           <PrioritySelector value={priority} onChange={setPriority} />
         </View>
       )}
       {inputVisible && (
         <View style={styles.optionsRow}>
-          <Text style={styles.optionsLabel}>Метки:</Text>
+          <Text style={styles.optionsLabel}>{t('tags', 'Метки:')}</Text>
           <TagSelector
             tags={allTags}
             selectedTagIds={selectedTagIds}
@@ -404,7 +413,7 @@ const TasksScreen = () => {
       )}
       {inputVisible && (
         <View style={styles.optionsRow}>
-          <Text style={styles.optionsLabel}>Повторять:</Text>
+          <Text style={styles.optionsLabel}>{t('repeat', 'Повторять:')}</Text>
           {(['none', 'daily', 'weekly', 'monthly'] as const).map(r => (
             <Button
               key={r}
@@ -421,7 +430,7 @@ const TasksScreen = () => {
       )}
       {inputVisible && (
         <View style={styles.optionsRow}>
-          <Text style={styles.optionsLabel}>Напомнить:</Text>
+          <Text style={styles.optionsLabel}>{t('remind', 'Напомнить:')}</Text>
           <Button
             mode={reminderTime ? 'contained' : 'outlined'}
             onPress={() => setShowTimePicker(true)}
@@ -429,7 +438,7 @@ const TasksScreen = () => {
             labelStyle={{ color: reminderTime ? '#fff' : '#555' }}
             buttonColor={reminderTime ? '#90caf9' : undefined}
           >
-            {reminderTime ? `⏰ ${reminderTime}` : 'Время'}
+            {reminderTime ? `⏰ ${reminderTime}` : t('time', 'Время')}
           </Button>
           {reminderTime && (
             <IconButton icon="close" size={16} onPress={() => setReminderTime(undefined)} />
@@ -457,7 +466,7 @@ const TasksScreen = () => {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Нет задач на выбранную дату</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t('no_tasks_for_date', 'Нет задач на выбранную дату')}</Text>}
       />
     </View>
   );
