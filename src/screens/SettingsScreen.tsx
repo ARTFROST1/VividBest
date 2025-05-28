@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Switch, RadioButton, List, Divider, Button, useTheme, Card } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useThemeToggle } from '../context/ThemeToggleContext';
 import { useTranslation } from 'react-i18next';
 import i18n from '../locales/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const SettingsScreen = () => {
   const { isDark, toggleTheme } = useThemeToggle();
@@ -28,6 +30,8 @@ const SettingsScreen = () => {
   const [font, setFont] = useState<'system' | 'monospace' | 'serif'>('system');
   const [fontSize, setFontSize] = useState(16);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
+  const { logout } = useAuth();
+  const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
 
   useEffect(() => {
     // Загрузка настроек при запуске
@@ -71,10 +75,30 @@ const SettingsScreen = () => {
     AsyncStorage.setItem('userSettings', JSON.stringify(settings));
   }, [language, sortOrder, notificationsSound, notificationsImportantOnly, dndStart, dndEnd, autosave, font, fontSize, showLineNumbers]);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser({
+          email: data.user.email || '',
+          name: data.user.user_metadata?.name || '',
+        });
+      }
+    })();
+  }, []);
+
   // TODO: интеграция с глобальным состоянием темы и языка
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Card style={[styles.userCard, { backgroundColor: colors.surface, borderRadius: roundness, marginBottom: 16 }]}> 
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 2, color: c.text }}>Аккаунт</Text>
+        <Text style={{ fontSize: 16, color: c.text }}>Имя: {user?.name || '—'}</Text>
+        <Text style={{ fontSize: 16, color: c.text }}>Email: {user?.email || '—'}</Text>
+      </Card>
       <Text style={[styles.header, { color: c.text }]}>{t('settings')}</Text>
       <Card style={[styles.card, { backgroundColor: colors.surface, borderRadius: roundness }]}>
         <List.Section>
@@ -201,10 +225,10 @@ const SettingsScreen = () => {
           </View>
         </List.Section>
       </Card>
-      <Button mode="contained" style={[styles.button, { backgroundColor: colors.primary, borderRadius: roundness }]} textColor={colors.onPrimary} onPress={() => {}} disabled>
+      <Button mode="contained" style={[styles.button, { backgroundColor: colors.error, borderRadius: roundness }]} textColor={'#fff'} onPress={logout}>
         {t('logout', 'Выйти из аккаунта')}
       </Button>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -214,7 +238,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    marginBottom: 18,
+    marginTop: 8,
+    marginBottom: 10,
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
@@ -222,7 +247,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 0,
-    marginBottom: 24,
+    marginBottom: 16,
     elevation: 2,
   },
   subheader: {
@@ -246,7 +271,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     marginVertical: 4,
-    height: 1,
+    height: 5,
   },
   button: {
     marginTop: 8,
@@ -272,6 +297,11 @@ const styles = StyleSheet.create({
     minWidth: 36,
     borderRadius: 8,
     marginHorizontal: 0,
+  },
+  userCard: {
+    padding: 16,
+    alignSelf: 'stretch',
+    elevation: 2,
   },
 });
 

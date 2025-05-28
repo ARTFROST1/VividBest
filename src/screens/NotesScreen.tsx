@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -20,42 +21,7 @@ interface NoteItem {
   children?: NoteItem[];
 }
 
-const initialNotes: NoteItem[] = [
-  {
-    id: '1',
-    title: 'Личное',
-    isFolder: true,
-    pinned: false,
-    children: [
-      {
-        id: '2',
-        title: 'Идеи',
-        isFolder: true,
-        pinned: false,
-        children: [
-          { id: '3', title: 'План на лето', isFolder: false, pinned: false },
-        ],
-      },
-      { id: '4', title: 'Покупки', isFolder: false, pinned: false },
-    ],
-  },
-  {
-    id: '5',
-    title: 'Работа',
-    isFolder: true,
-    pinned: false,
-    children: [
-      {
-        id: '6',
-        title: 'Проект X',
-        isFolder: false,
-        pinned: false,
-      },
-    ],
-  },
-  { id: '7', title: 'Идеи для стартапа', isFolder: false, pinned: false },
-  { id: '8', title: 'Заметка вне папки', isFolder: false, pinned: false },
-];
+const initialNotes: NoteItem[] = [];
 
 // Рекурсивное удаление по id
 function removeById(items: NoteItem[], id: string): NoteItem[] {
@@ -138,14 +104,106 @@ const NotesScreen = () => {
   const [activeSidebarFilter, setActiveSidebarFilter] = useState<string | null>(null);
   const navigation = useNavigation();
   const isWeb = Platform.OS === 'web';
+  const [renameDialog, setRenameDialog] = useState<{id: string, isFolder: boolean} | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [createMode, setCreateMode] = useState<'note' | 'folder' | 'both'>('both');
 
-  // Добавление новой заметки/папки на верхний уровень
+  useEffect(() => {
+    (async () => {
+      const savedNotes = await AsyncStorage.getItem('notes');
+      const savedFolder = await AsyncStorage.getItem('lastFolder');
+      if (savedNotes) setNotes(JSON.parse(savedNotes));
+      if (savedFolder) setActiveSidebarFilter(savedFolder);
+    })();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem('notes', JSON.stringify(notes));
+  }, [notes]);
+
+  useEffect(() => {
+    if (activeSidebarFilter !== null) {
+      AsyncStorage.setItem('lastFolder', activeSidebarFilter);
+    }
+  }, [activeSidebarFilter]);
+
+  // Функция для определения уровня вложенности папки по id
+  function getFolderLevel(items: NoteItem[], folderId: string | null, level = 0): number | null {
+    if (!folderId) return 0;
+    for (const item of items) {
+      if (item.id === folderId && item.isFolder) return level + 1;
+      if (item.children) {
+        const found = getFolderLevel(item.children, folderId, level + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  const activeFolderLevel = getFolderLevel(notes, activeSidebarFilter) ?? 0;
+
+  // Функция для открытия диалога создания с учетом ограничений
+  const openCreateDialog = (context: 'sidebar' | 'main' = 'main') => {
+    // В корне: только папка
+    if (activeSidebarFilter == null) {
+      setIsFolder(true);
+      setCreateMode('folder');
+      setShowDialog(true);
+      return;
+    }
+    // В папке 1-го уровня: можно и папку, и заметку
+    if (activeFolderLevel === 1) {
+      setIsFolder(context === 'sidebar'); // если из Sidebar — по умолчанию папка, иначе заметка
+      setCreateMode('both');
+      setShowDialog(true);
+      return;
+    }
+    // В папке 2-го уровня: только заметка
+    if (activeFolderLevel >= 2) {
+      setIsFolder(false);
+      setCreateMode('note');
+      setShowDialog(true);
+      return;
+    }
+  };
+
+  // handleAdd: запрещаем создание папки в папке второго уровня и глубже
   const handleAdd = () => {
     if (!newTitle.trim()) return;
-    setNotes([
-      ...notes,
-      { id: Date.now().toString(), title: newTitle, isFolder, pinned: false, children: isFolder ? [] : undefined },
-    ]);
+    // Запрет на создание папки в папке второго уровня и глубже
+    if (isFolder && activeFolderLevel >= 2) {
+      alert('В этой папке нельзя создавать папки.');
+      return;
+    }
+    const newItem: NoteItem = {
+      id: Date.now().toString(),
+      title: newTitle,
+      isFolder,
+      pinned: false,
+      children: isFolder ? [] : undefined,
+    };
+    if (activeSidebarFilter) {
+      function addToFolder(items: NoteItem[]): NoteItem[] {
+        return items.map(item => {
+          if (item.id === activeSidebarFilter && item.isFolder) {
+            return {
+              ...item,
+              children: item.children ? [...item.children, newItem] : [newItem],
+            };
+          }
+          if (item.children) {
+            return { ...item, children: addToFolder(item.children) };
+          }
+          return item;
+        });
+      }
+      setNotes(prev => addToFolder(prev));
+      // Если это новая папка первого уровня — делаем её активной
+      if (isFolder && activeFolderLevel === 1) setActiveSidebarFilter(newItem.id);
+    } else {
+      setNotes(prev => [...prev, newItem]);
+      // Если это первая папка — делаем её активной
+      if (isFolder) setActiveSidebarFilter(newItem.id);
+    }
     setShowDialog(false);
     setNewTitle('');
     setIsFolder(false);
@@ -201,6 +259,7 @@ const NotesScreen = () => {
             onLongPress={() => setMoveSource(item.id)}
             onPress={() => {
               if (!item.isFolder) {
+                // @ts-ignore
                 navigation.navigate('NoteEditor', { id: item.id, title: item.title });
               }
             }}
@@ -353,13 +412,119 @@ const NotesScreen = () => {
       <TouchableOpacity
         key={note.id}
         style={[styles.noteCard, { backgroundColor: c.surface, borderRadius: roundness, borderColor: c.border }]}
-        onPress={() => navigation.navigate('NoteEditor', { id: note.id, title: note.title })}
+        onPress={() => {
+          // @ts-ignore
+          navigation.navigate('NoteEditor', { id: note.id, title: note.title });
+        }}
       >
         <Text style={[styles.noteTitle, { color: c.text }]} numberOfLines={1}>{note.title}</Text>
         <Text style={[styles.noteSubtitle, { color: c.placeholder }]} numberOfLines={1}>Краткое описание или начало заметки...</Text>
       </TouchableOpacity>
     ));
   }
+
+  // Проверка: есть ли хотя бы одна папка в корне
+  const hasRootFolders = notes.some(item => item.isFolder);
+  // Проверка: есть ли заметки в выбранной папке
+  function getActiveFolderNotes(items: NoteItem[], folderId: string | null): NoteItem[] {
+    if (!folderId) return [];
+    for (const item of items) {
+      if (item.id === folderId && item.isFolder) {
+        return item.children ? item.children.filter(n => !n.isFolder) : [];
+      }
+      if (item.children) {
+        const found = getActiveFolderNotes(item.children, folderId);
+        if (found.length > 0) return found;
+      }
+    }
+    return [];
+  }
+  const activeFolderNotes = getActiveFolderNotes(notes, activeSidebarFilter);
+
+  // onSelect: если id папки — выделяем, если id заметки — открываем редактор
+  const handleSidebarSelect = (id: string | null) => {
+    if (!id) {
+      setActiveSidebarFilter(null);
+      return;
+    }
+    // Проверяем, папка это или заметка
+    function findNote(items: NoteItem[]): NoteItem | null {
+      for (const item of items) {
+        if (item.id === id) return item;
+        if (item.children) {
+          const found = findNote(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    const found = findNote(notes);
+    if (found) {
+      if (found.isFolder) {
+        setActiveSidebarFilter(id);
+      } else {
+        // @ts-ignore
+        navigation.navigate('NoteEditor', { id: found.id, title: found.title });
+      }
+    }
+  };
+
+  const handleResetAll = async () => {
+    await AsyncStorage.removeItem('notes');
+    await AsyncStorage.removeItem('lastFolder');
+    setNotes([]);
+    setActiveSidebarFilter(null);
+  };
+
+  const handleSidebarOpen = (id: string, isFolder: boolean) => {
+    if (isFolder) {
+      setActiveSidebarFilter(id);
+    } else {
+      // @ts-ignore
+      navigation.navigate('NoteEditor', { id });
+    }
+  };
+
+  const handleSidebarRename = (id: string, isFolder: boolean) => {
+    setRenameDialog({id, isFolder});
+    // Найти текущее имя
+    function findItem(items: NoteItem[]): NoteItem | null {
+      for (const item of items) {
+        if (item.id === id) return item;
+        if (item.children) {
+          const found = findItem(item.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    const found = findItem(notes);
+    setRenameValue(found?.title || '');
+  };
+
+  const handleSidebarDelete = (id: string, isFolder: boolean) => {
+    setNotes(prev => removeById(prev, id));
+    // Если удалили активную папку — сбросить фильтр
+    if (isFolder && activeSidebarFilter === id) setActiveSidebarFilter(null);
+  };
+
+  const handleRenameApply = () => {
+    if (!renameDialog) return;
+    function rename(items: NoteItem[]): NoteItem[] {
+      return items.map(item => {
+        if (item.id === renameDialog.id) {
+          return { ...item, title: renameValue };
+        }
+        if (item.children) {
+          return { ...item, children: rename(item.children) };
+        }
+        return item;
+      });
+    }
+    setNotes(prev => rename(prev));
+    setRenameDialog(null);
+    setRenameValue('');
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -372,14 +537,18 @@ const NotesScreen = () => {
       {isWeb && sidebarVisible && (
         <>
           <View style={styles.webSidebarWrap}>
+            <Button onPress={handleResetAll} mode="text" style={{ marginBottom: 8 }}>
+              Сбросить всё
+            </Button>
             <Sidebar
               folders={folders}
               activeId={activeSidebarFilter}
-              onSelect={id => {
-                setActiveSidebarFilter(id);
-                setSidebarVisible(false);
-              }}
-              onAddFolder={() => alert(t('add_folder', 'Добавить папку (реализовать)'))}
+              onSelect={handleSidebarSelect}
+              onAddFolder={() => openCreateDialog('sidebar')}
+              onOpenItem={handleSidebarOpen}
+              onRenameItem={handleSidebarRename}
+              onDeleteItem={handleSidebarDelete}
+              activeFolderLevel={activeFolderLevel}
             />
           </View>
           <TouchableOpacity style={styles.overlayBg} onPress={() => setSidebarVisible(false)} />
@@ -390,14 +559,18 @@ const NotesScreen = () => {
         <View style={styles.mobileSidebarOverlay}>
           <TouchableOpacity style={styles.overlayBg} onPress={() => setSidebarVisible(false)} />
           <View style={styles.mobileSidebar}>
+            <Button onPress={handleResetAll} mode="text" style={{ marginBottom: 8 }}>
+              Сбросить всё
+            </Button>
             <Sidebar
               folders={folders}
               activeId={activeSidebarFilter}
-              onSelect={id => {
-                setActiveSidebarFilter(id);
-                setSidebarVisible(false);
-              }}
-              onAddFolder={() => alert(t('add_folder', 'Добавить папку (реализовать)'))}
+              onSelect={handleSidebarSelect}
+              onAddFolder={() => openCreateDialog('sidebar')}
+              onOpenItem={handleSidebarOpen}
+              onRenameItem={handleSidebarRename}
+              onDeleteItem={handleSidebarDelete}
+              activeFolderLevel={activeFolderLevel}
             />
           </View>
         </View>
@@ -410,16 +583,39 @@ const NotesScreen = () => {
             placeholder={t('search_notes_placeholder', 'Поиск заметок...')}
             value={search}
             onChangeText={setSearch}
-            style={[styles.searchInput, { backgroundColor: c.surface, color: c.text, borderRadius: roundness, borderColor: c.border }]}
+            style={[styles.searchInput, { backgroundColor: c.surface, color: c.text, borderRadius: 100, borderColor: c.border }]}
             inputStyle={{ color: c.text }}
             iconColor={c.placeholder}
             placeholderTextColor={c.placeholder}
           />
         </View>
-        {/* Список заметок */}
-        <ScrollView style={styles.notesListBlock}>
-          {renderNotesList(filterNotes(filterBySidebar(notes), search))}
-        </ScrollView>
+        {/* Пустой экран, если нет папок */}
+        {activeSidebarFilter == null && (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: c.placeholder, fontSize: 18, marginBottom: 16 }}>{t('no_folders', 'Нет папок')}</Text>
+          </View>
+        )}
+        {activeSidebarFilter && activeFolderLevel === 1 && activeFolderNotes.length === 0 && (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: c.placeholder, fontSize: 18, marginBottom: 16 }}>{t('no_notes', 'Нет заметок')}</Text>
+          </View>
+        )}
+        {activeSidebarFilter && activeFolderLevel === 2 && activeFolderNotes.length === 0 && (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: c.placeholder, fontSize: 18, marginBottom: 16 }}>{t('no_notes', 'Нет заметок')}</Text>
+          </View>
+        )}
+        {/* Обычный список заметок */}
+        {(
+          // Если выбрана папка и в ней есть заметки
+          (activeSidebarFilter && activeFolderNotes.length > 0) ||
+          // Или если нет выбранной папки, но есть заметки в корне
+          (!activeSidebarFilter && notes.filter(n => !n.isFolder).length > 0)
+        ) && (
+          <ScrollView style={styles.notesListBlock}>
+            {renderNotesList(filterNotes(filterBySidebar(notes), search))}
+          </ScrollView>
+        )}
         {/* Кнопка добавить */}
         <LinearGradient
           colors={['#7745dc', '#f34f8c']}
@@ -432,9 +628,9 @@ const NotesScreen = () => {
             style={{ backgroundColor: 'transparent', elevation: 0 }}
             contentStyle={{ height: 48 }}
             labelStyle={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}
-            onPress={() => setShowDialog(true)}
+            onPress={() => openCreateDialog('main')}
           >
-            + {t('new_note', 'Новая заметка')}
+            + {t('new', 'добавить')}
           </Button>
         </LinearGradient>
         {/* Диалог создания заметки/папки */}
@@ -450,13 +646,41 @@ const NotesScreen = () => {
                 style={{ backgroundColor: c.background, color: c.text, borderRadius: roundness }}
                 placeholderTextColor={c.placeholder}
               />
-              <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
-                {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
-              </Button>
+              {createMode === 'both' && (
+                <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
+                  {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
+                </Button>
+              )}
+              {createMode === 'folder' && (
+                <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
+              )}
+              {createMode === 'note' && (
+                <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
+              )}
             </Dialog.Content>
             <Dialog.Actions>
               <Button onPress={() => setShowDialog(false)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
               <Button onPress={handleAdd} textColor={c.primary}>{t('create', 'Создать')}</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+        {/* Диалог переименования */}
+        <Portal>
+          <Dialog visible={!!renameDialog} onDismiss={() => setRenameDialog(null)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
+            <Dialog.Title style={{ color: c.text }}>{t('rename', 'Переименовать')}</Dialog.Title>
+            <Dialog.Content>
+              <TextInput
+                label={t('name', 'Название')}
+                value={renameValue}
+                onChangeText={setRenameValue}
+                autoFocus
+                style={{ backgroundColor: c.background, color: c.text, borderRadius: roundness }}
+                placeholderTextColor={c.placeholder}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setRenameDialog(null)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
+              <Button onPress={handleRenameApply} textColor={c.primary}>{t('save', 'Сохранить')}</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -476,14 +700,18 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   searchBlock: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 20,
   },
   searchInput: {
     borderWidth: 1,
     fontSize: 16,
-    elevation: 0,
+    elevation: 40,
+    width: '100%',
+    height: 50,
+    alignSelf: 'center',
+    borderRadius: 100,
   },
   notesListBlock: {
     flex: 1,

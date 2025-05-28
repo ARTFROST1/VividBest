@@ -4,7 +4,7 @@ export const lightTheme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
-    primary: '#7846dd', // Акцентный Фиолетовый
+    primary: '#8a44da', // Акцентный Фиолетовый
     secondary: '#F7B801', // Акцентный жёлтый
     background: '#F5F6FA', // Светлый фон
     surface: '#FFFFFF',
@@ -30,7 +30,7 @@ export const darkTheme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#9543c9', // Акцентный пурпурный
+    primary: '#8a44da', // Акцентный пурпурный
     secondary: '#1976d2', // Акцентный синий
     background: '#181818', // Глубокий тёмный фон
     surface: '#23232A',

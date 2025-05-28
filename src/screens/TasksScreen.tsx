@@ -307,7 +307,7 @@ const TasksScreen = () => {
             <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
             <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
             {item.tags && item.tags.map(tag => (
-              <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness }]}>{tag}</Text>
+              <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness}]}>{tag}</Text>
             ))}
           </View>
         </View>
@@ -378,7 +378,7 @@ const TasksScreen = () => {
           value={newTask}
           onChangeText={setNewTask}
           placeholder={t('add_task_placeholder', 'Новая задача...')}
-          style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: roundness }]}
+          style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: 12 }]}
           placeholderTextColor={c.placeholder}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
@@ -466,7 +466,9 @@ const TasksScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    paddingTop: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   header: {
     marginBottom: 16,
@@ -482,7 +484,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     fontSize: 16,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 3, /* высота поля ввода */
     borderWidth: 0,
     elevation: 2,
   },
@@ -494,7 +496,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   divider: {
-    height: 1,
+    height: 0,
     marginVertical: 4,
   },
   listContent: {
@@ -559,8 +561,8 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: '#888',
     fontSize: 12,
-    marginTop: 2,
-    marginBottom: 4,
+    marginTop: 1,
+    marginBottom: 2,
   },
   optionsRow: {
     marginBottom: 8,
