@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Switch, RadioButton, List, Divider, Button, useTheme, Card } from 'react-native-paper';
+import { Text, Switch, RadioButton, List, Divider, Button, useTheme, Card, Dialog, Portal } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useThemeToggle } from '../context/ThemeToggleContext';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,7 @@ import i18n from '../locales/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import notesEventBus from '../utils/notesEventBus';
 
 const SettingsScreen = () => {
   const { isDark, toggleTheme } = useThemeToggle();
@@ -32,6 +33,7 @@ const SettingsScreen = () => {
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const { logout } = useAuth();
   const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
+  const [resetDialogVisible, setResetDialogVisible] = useState(false);
 
   useEffect(() => {
     // Загрузка настроек при запуске
@@ -88,6 +90,13 @@ const SettingsScreen = () => {
   }, []);
 
   // TODO: интеграция с глобальным состоянием темы и языка
+
+  const handleResetAll = async () => {
+    await AsyncStorage.removeItem('notes');
+    await AsyncStorage.removeItem('lastFolder');
+    notesEventBus.emit('reset');
+    setResetDialogVisible(false);
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}
@@ -228,6 +237,21 @@ const SettingsScreen = () => {
       <Button mode="contained" style={[styles.button, { backgroundColor: colors.error, borderRadius: roundness }]} textColor={'#fff'} onPress={logout}>
         {t('logout', 'Выйти из аккаунта')}
       </Button>
+      <Button mode="outlined" style={[styles.button, { borderColor: colors.error, marginTop: 12 }]} textColor={colors.error} onPress={() => setResetDialogVisible(true)}>
+        {t('reset_all', 'Сбросить всё')}
+      </Button>
+      <Portal>
+        <Dialog visible={resetDialogVisible} onDismiss={() => setResetDialogVisible(false)} style={{ borderRadius: roundness, backgroundColor: colors.surface }}>
+          <Dialog.Title style={{ color: c.text }}>{t('confirm_reset', 'Подтвердите сброс')}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ color: c.text }}>{t('reset_all_confirm', 'Вы уверены, что хотите удалить все заметки и папки? Это действие необратимо.')}</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setResetDialogVisible(false)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
+            <Button onPress={handleResetAll} textColor={colors.error}>{t('reset', 'Сбросить')}</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </ScrollView>
   );
 };

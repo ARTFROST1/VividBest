@@ -7,6 +7,7 @@ import Sidebar, { FolderNode } from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import notesEventBus from '../utils/notesEventBus';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -115,6 +116,15 @@ const NotesScreen = () => {
       if (savedNotes) setNotes(JSON.parse(savedNotes));
       if (savedFolder) setActiveSidebarFilter(savedFolder);
     })();
+    // Подписка на сброс
+    const handler = () => {
+      setNotes([]);
+      setActiveSidebarFilter(null);
+    };
+    notesEventBus.on('reset', handler);
+    return () => {
+      notesEventBus.off('reset', handler);
+    };
   }, []);
 
   useEffect(() => {
@@ -469,13 +479,6 @@ const NotesScreen = () => {
     }
   };
 
-  const handleResetAll = async () => {
-    await AsyncStorage.removeItem('notes');
-    await AsyncStorage.removeItem('lastFolder');
-    setNotes([]);
-    setActiveSidebarFilter(null);
-  };
-
   const handleSidebarOpen = (id: string, isFolder: boolean) => {
     if (isFolder) {
       setActiveSidebarFilter(id);
@@ -537,9 +540,6 @@ const NotesScreen = () => {
       {isWeb && sidebarVisible && (
         <>
           <View style={styles.webSidebarWrap}>
-            <Button onPress={handleResetAll} mode="text" style={{ marginBottom: 8 }}>
-              Сбросить всё
-            </Button>
             <Sidebar
               folders={folders}
               activeId={activeSidebarFilter}
@@ -559,9 +559,6 @@ const NotesScreen = () => {
         <View style={styles.mobileSidebarOverlay}>
           <TouchableOpacity style={styles.overlayBg} onPress={() => setSidebarVisible(false)} />
           <View style={styles.mobileSidebar}>
-            <Button onPress={handleResetAll} mode="text" style={{ marginBottom: 8 }}>
-              Сбросить всё
-            </Button>
             <Sidebar
               folders={folders}
               activeId={activeSidebarFilter}
@@ -576,7 +573,7 @@ const NotesScreen = () => {
         </View>
       )}
       {/* Основной контент */}
-      <View style={[styles.notesMain, { backgroundColor: c.background }]}>
+      <View style={[styles.notesMain, { backgroundColor: c.background, flex: 1 }]}>
         {/* Поиск */}
         <View style={styles.searchBlock}>
           <Searchbar
@@ -616,27 +613,10 @@ const NotesScreen = () => {
             {renderNotesList(filterNotes(filterBySidebar(notes), search))}
           </ScrollView>
         )}
-        {/* Кнопка добавить */}
-        <LinearGradient
-          colors={['#7745dc', '#f34f8c']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.addNoteBtn, { borderRadius: roundness }]}
-        >
-          <Button
-            mode="contained"
-            style={{ backgroundColor: 'transparent', elevation: 0 }}
-            contentStyle={{ height: 48 }}
-            labelStyle={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}
-            onPress={() => openCreateDialog('main')}
-          >
-            + {t('new', 'добавить')}
-          </Button>
-        </LinearGradient>
         {/* Диалог создания заметки/папки */}
         <Portal>
           <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
-            <Dialog.Title style={{ color: c.text }}>{t('create_new', 'Новая')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
+            <Dialog.Title style={{ color: c.text }}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
             <Dialog.Content>
               <TextInput
                 label={t('name', 'Название')}
@@ -648,7 +628,7 @@ const NotesScreen = () => {
               />
               {createMode === 'both' && (
                 <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
-                  {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
+                  {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать_как_папку')}
                 </Button>
               )}
               {createMode === 'folder' && (
@@ -684,6 +664,23 @@ const NotesScreen = () => {
             </Dialog.Actions>
           </Dialog>
         </Portal>
+        {/* Кнопка добавить — теперь абсолютно внизу */}
+        <LinearGradient
+          colors={['#7745dc', '#f34f8c']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.addNoteBtnFixed, { borderRadius: roundness }]}
+        >
+          <Button
+            mode="contained"
+            style={{ backgroundColor: 'transparent', elevation: 0 }}
+            contentStyle={{ height: 48 }}
+            labelStyle={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}
+            onPress={() => openCreateDialog('main')}
+          >
+            + {t('New', 'Добавить')}
+          </Button>
+        </LinearGradient>
       </View>
     </View>
   );
@@ -736,6 +733,13 @@ const styles = StyleSheet.create({
   addNoteBtn: {
     marginHorizontal: 24,
     marginVertical: 18,
+    elevation: 2,
+  },
+  addNoteBtnFixed: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 24,
     elevation: 2,
   },
   emptyText: {

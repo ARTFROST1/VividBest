@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, IconButton, Menu, Divider, Chip } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
@@ -16,7 +16,7 @@ interface Task {
   dueDate: string; // YYYY-MM-DD
   priority: 'low' | 'medium' | 'high';
   tags: string[];
-  repeatInterval: 'none' | 'daily' | 'weekly' | 'monthly';
+  repeatInterval: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   reminderTime?: string; // HH:mm
   notificationId?: string;
 }
@@ -38,6 +38,7 @@ const REPEAT_LABELS = {
   daily: 'Ежедневно',
   weekly: 'Еженедельно',
   monthly: 'Ежемесячно',
+  yearly: 'Каждый год',
 };
 
 const TASKS_STORAGE_KEY = 'TASKS_V1';
@@ -62,7 +63,7 @@ const TasksScreen = () => {
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [repeatInterval, setRepeatInterval] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  const [repeatInterval, setRepeatInterval] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [reminderTime, setReminderTime] = useState<string | undefined>(undefined);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const theme = useTheme();
@@ -77,6 +78,13 @@ const TasksScreen = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const { t } = useTranslation();
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
+  const [sendNotification, setSendNotification] = useState(true);
+  const [optionsAnim] = useState(new Animated.Value(0));
+  const [showDatePickerInline, setShowDatePickerInline] = useState(false);
+  const [showTimePickerInline, setShowTimePickerInline] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -294,7 +302,7 @@ const TasksScreen = () => {
   const progress = filteredTasks.length > 0 ? completedCount / filteredTasks.length : 0;
 
   const renderItem = ({ item }: { item: Task }) => (
-    <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22' }]}> 
+    <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
       <View style={styles.taskRow}>
         <Checkbox
           status={item.completed ? 'checked' : 'unchecked'}
@@ -333,133 +341,267 @@ const TasksScreen = () => {
     if (!newTask.trim()) setIsInputFocused(false);
   };
 
+  // Анимация появления/скрытия блока опций
+  useEffect(() => {
+    if (isInputFocused) {
+      Animated.timing(optionsAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(optionsAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isInputFocused]);
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text variant="titleLarge" style={styles.header}>{t('daily_tasks')}</Text>
-      {/* Выбор даты */}
-      <View style={styles.dateRow}>
-        <Button
-          mode={formatDate(selectedDate) === formatDate(new Date()) ? 'contained' : 'outlined'}
-          onPress={() => setSelectedDate(new Date())}
-          style={styles.dateButton}
-        >
-          {t('today', 'Сегодня')}
-        </Button>
-        <Button
-          mode={formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? 'contained' : 'outlined'}
-          onPress={() => setSelectedDate(addDays(new Date(), 1))}
-          style={styles.dateButton}
-        >
-          {t('tomorrow', 'Завтра')}
-        </Button>
-        <IconButton
-          icon="calendar"
-          onPress={() => setShowDatePicker(true)}
-          style={styles.calendarButton}
-        />
-        <Text style={styles.selectedDateText}>{selectedDate.toLocaleDateString('ru-RU')}</Text>
-      </View>
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
-      {filteredTasks.length > 0 && (
-        <View style={styles.progressContainer}>
-          <ProgressBar progress={progress} color={colors.primary} style={styles.progressBar} />
-          <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
-        </View>
-      )}
-      <View style={styles.inputRow}>
-        <TextInput
-          value={newTask}
-          onChangeText={setNewTask}
-          placeholder={t('add_task_placeholder', 'Новая задача...')}
-          style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: 12 }]}
-          placeholderTextColor={c.placeholder}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-        />
-        <Button mode="contained" onPress={handleAddTask} style={[styles.addBtn, { backgroundColor: colors.primary, borderRadius: roundness }]} textColor={colors.onPrimary}>
-          +
-        </Button>
-      </View>
-      {/* Блок тонкой настройки — только при фокусе на поле ввода */}
-      {isInputFocused && (
-        <View style={styles.optionsRow}>
-          {/* PrioritySelector с равномерным flex */}
-          <View style={styles.priorityRow}>
-            {(['low', 'medium', 'high'] as const).map((p, idx, arr) => (
-              <Chip
-                key={p}
-                selected={priority === p}
-                style={{ flex: 1, marginRight: idx < arr.length - 1 ? 8 : 0, backgroundColor: PRIORITY_COLORS[p] }}
-                textStyle={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}
-                onPress={() => setPriority(p)}
-              >
-                {PRIORITY_LABELS[p]}
-              </Chip>
-            ))}
-          </View>
-          {/* RepeatInterval */}
-          <View style={styles.repeatRow}>
-            {(['none', 'daily', 'weekly', 'monthly'] as const).map((interval) => (
-              <Chip
-                key={interval}
-                selected={repeatInterval === interval}
-                style={{ marginRight: 8, backgroundColor: repeatInterval === interval ? colors.primary : colors.surface }}
-                textStyle={{ color: repeatInterval === interval ? colors.onPrimary : c.text }}
-                onPress={() => setRepeatInterval(interval)}
-              >
-                {REPEAT_LABELS[interval]}
-              </Chip>
-            ))}
-          </View>
-          {/* Напоминание */}
-          <View style={styles.reminderRow}>
-            <Chip
-              icon="alarm"
-              selected={!!reminderTime}
-              style={{ backgroundColor: !!reminderTime ? colors.primary : colors.surface }}
-              textStyle={{ color: !!reminderTime ? colors.onPrimary : c.text }}
-              onPress={() => setShowTimePicker(true)}
-            >
-              {reminderTime ? reminderTime : t('set_reminder', 'Напоминание')}
-            </Chip>
-            {!!reminderTime && (
-              <IconButton icon="close" size={20} onPress={() => setReminderTime(undefined)} />
-            )}
-            {showTimePicker && (
-              <DateTimePicker
-                value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : new Date()}
-                mode="time"
-                is24Hour={true}
-                display="default"
-                onChange={(event, date) => {
-                  setShowTimePicker(false);
-                  if (date) {
-                    const h = date.getHours().toString().padStart(2, '0');
-                    const m = date.getMinutes().toString().padStart(2, '0');
-                    setReminderTime(`${h}:${m}`);
-                  }
-                }}
-              />
-            )}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
+    >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text variant="titleLarge" style={styles.header}>{t('daily_tasks')}</Text>
+        {/* Выбор даты */}
+        <View style={styles.dateRow}>
+          <Button
+            mode={formatDate(selectedDate) === formatDate(new Date()) ? 'contained' : 'outlined'}
+            onPress={() => setSelectedDate(new Date())}
+            style={styles.dateButton}
+          >
+            {t('today', 'Сегодня')}
+          </Button>
+          <Button
+            mode={formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? 'contained' : 'outlined'}
+            onPress={() => setSelectedDate(addDays(new Date(), 1))}
+            style={styles.dateButton}
+          >
+            {t('tomorrow', 'Завтра')}
+          </Button>
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              themeVariant={theme.dark ? 'dark' : 'light'}
+              onChange={(event, date) => {
+                if (date) setSelectedDate(date);
+              }}
+              style={{ width: 140 }}
+            />
           </View>
         </View>
-      )}
-      <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-      <FlatList
-        data={filteredTasks}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <Divider style={[styles.divider, { backgroundColor: c.divider }]} />}
-      />
-    </View>
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+        {filteredTasks.length > 0 && (
+          <View style={styles.progressContainer}>
+            <ProgressBar progress={progress} color={colors.primary} style={styles.progressBar} />
+            <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
+          </View>
+        )}
+        <View style={styles.inputRow}>
+          <TextInput
+            ref={inputRef}
+            value={newTask}
+            onChangeText={setNewTask}
+            placeholder={t('add_task_placeholder', 'Новая задача...')}
+            style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: roundness, borderColor: c.divider }]}
+            placeholderTextColor={c.placeholder}
+            onFocus={handleInputFocus}
+            onBlur={() => {}}
+          />
+        </View>
+        {/* Блок создания заметки только при isInputFocused */}
+        {isInputFocused && (
+          <Animated.View
+            style={{
+              opacity: optionsAnim,
+              transform: [{ translateY: optionsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+              marginBottom: 12,
+              backgroundColor: colors.elevation?.level2 || (theme.dark ? colors.surface : colors.background),
+              borderRadius: roundness * 2,
+              padding: 16,
+              shadowColor: theme.dark ? '#000' : '#222',
+              shadowOpacity: 0.10,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 6,
+            }}
+          >
+            <View style={[styles.iosBlock, { backgroundColor: colors.surface, borderRadius: roundness * 1.5, shadowColor: c.text + '18' }]}> 
+              {/* Одна строка: дата слева, время справа */}
+              <View style={styles.iosRowHorizontal}>
+                {/* Левая часть — дата */}
+                <View style={styles.iosCol}>
+                  <Text style={[styles.iosLabel, { color: c.text }]}>{t('date', 'Дата')}</Text>
+                  <DateTimePicker
+                    value={newTaskDate}
+                    mode="date"
+                    display="default"
+                    themeVariant={theme.dark ? 'dark' : 'light'}
+                    onChange={(event, date) => {
+                      if (date) setNewTaskDate(date);
+                    }}
+                    style={{ width: 120 }}
+                  />
+                </View>
+                {/* Правая часть — время */}
+                <View style={styles.iosCol}>
+                  <Text style={[styles.iosLabel, { color: c.text }]}>{t('time', 'Время')}</Text>
+                  <DateTimePicker
+                    value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : newTaskDate}
+                    mode="time"
+                    is24Hour={true}
+                    display="default"
+                    themeVariant={theme.dark ? 'dark' : 'light'}
+                    onChange={(event, date) => {
+                      if (date) {
+                        const h = date.getHours().toString().padStart(2, '0');
+                        const m = date.getMinutes().toString().padStart(2, '0');
+                        setReminderTime(`${h}:${m}`);
+                      }
+                    }}
+                    style={{ width: 120 }}
+                  />
+                </View>
+              </View>
+              {/* Остальные элементы блока (приоритет, повтор, переключатель, +Добавить) идут ниже, с отступами */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 8 }}>
+                <Text style={[styles.iosMeta, { color: PRIORITY_COLORS[priority] }]}>{PRIORITY_LABELS[priority]}</Text>
+                <Text style={[styles.iosMeta, { color: c.text }]}>{REPEAT_LABELS[repeatInterval]}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <TouchableOpacity
+                  style={[styles.iosButton, { flex: 1, marginRight: 8, backgroundColor: colors.background, borderColor: c.divider, borderRadius: roundness }]}
+                  onPress={() => {
+                    if (Platform.OS === 'ios') {
+                      ActionSheetIOS.showActionSheetWithOptions({
+                        options: [PRIORITY_LABELS.low, PRIORITY_LABELS.medium, PRIORITY_LABELS.high, t('cancel', 'Отмена')],
+                        cancelButtonIndex: 3,
+                        title: t('priority', 'Приоритет'),
+                      }, (buttonIndex) => {
+                        if (buttonIndex === 0) setPriority('low');
+                        if (buttonIndex === 1) setPriority('medium');
+                        if (buttonIndex === 2) setPriority('high');
+                      });
+                    } else {
+                      setShowPriorityModal(true);
+                    }
+                  }}
+                >
+                  <Text style={[styles.iosButtonText, { color: c.text }]}>{t('priority', 'Приоритет')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.iosButton, { flex: 1, backgroundColor: colors.background, borderColor: c.divider, borderRadius: roundness }]}
+                  onPress={() => {
+                    if (Platform.OS === 'ios') {
+                      ActionSheetIOS.showActionSheetWithOptions({
+                        options: [REPEAT_LABELS.none, REPEAT_LABELS.daily, REPEAT_LABELS.weekly, REPEAT_LABELS.monthly, REPEAT_LABELS.yearly, t('cancel', 'Отмена')],
+                        cancelButtonIndex: 5,
+                        title: t('repeat', 'Повторять'),
+                      }, (buttonIndex) => {
+                        if (buttonIndex === 0) setRepeatInterval('none');
+                        if (buttonIndex === 1) setRepeatInterval('daily');
+                        if (buttonIndex === 2) setRepeatInterval('weekly');
+                        if (buttonIndex === 3) setRepeatInterval('monthly');
+                        if (buttonIndex === 4) setRepeatInterval('yearly');
+                      });
+                    } else {
+                      setShowRepeatModal(true);
+                    }
+                  }}
+                >
+                  <Text style={[styles.iosButtonText, { color: c.text }]}>{t('repeat', 'Повторять')}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ flex: 1, color: c.text }}>{t('send_notification', 'Отправить уведомление')}</Text>
+                <Switch
+                  value={sendNotification}
+                  onValueChange={setSendNotification}
+                  thumbColor={sendNotification ? colors.primary : c.divider}
+                  trackColor={{ true: colors.primary + '55', false: c.divider }}
+                />
+              </View>
+              {/* Две кнопки внизу: Отмена и Добавить */}
+              <View style={styles.iosButtonRow}>
+                <Button
+                  mode="outlined"
+                  onPress={() => {
+                    setIsInputFocused(false);
+                    setNewTask('');
+                    if (inputRef.current) inputRef.current.blur();
+                  }}
+                  style={[styles.iosCancelBtn, { borderColor: colors.primary, borderRadius: roundness }]}
+                  textColor={colors.primary}
+                >
+                  {t('cancel', 'Отмена')}
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => {
+                    handleAddTask();
+                    setIsInputFocused(false);
+                    if (inputRef.current) inputRef.current.blur();
+                  }}
+                  style={[styles.iosAddBtn, { backgroundColor: colors.primary, borderRadius: roundness }]}
+                  textColor={colors.onPrimary}
+                >
+                  {t('add', 'Добавить')}
+                </Button>
+              </View>
+            </View>
+            {/* Модальные окна для Android (если нужно) */}
+            <Modal visible={showPriorityModal} transparent animationType="fade" onRequestClose={() => setShowPriorityModal(false)}>
+              <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: roundness }]}> 
+                  {(['low', 'medium', 'high'] as const).map((p) => (
+                    <TouchableOpacity key={p} onPress={() => { setPriority(p); setShowPriorityModal(false); }} style={styles.modalOption}>
+                      <Text style={{ color: c.text, fontSize: 18 }}>{PRIORITY_LABELS[p]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity onPress={() => setShowPriorityModal(false)} style={styles.modalOption}>
+                    <Text style={{ color: c.error, fontSize: 18 }}>{t('cancel', 'Отмена')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+            <Modal visible={showRepeatModal} transparent animationType="fade" onRequestClose={() => setShowRepeatModal(false)}>
+              <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: roundness }]}> 
+                  {(['none', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((interval) => (
+                    <TouchableOpacity key={interval} onPress={() => { setRepeatInterval(interval as any); setShowRepeatModal(false); }} style={styles.modalOption}>
+                      <Text style={{ color: c.text, fontSize: 18 }}>{REPEAT_LABELS[interval]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity onPress={() => setShowRepeatModal(false)} style={styles.modalOption}>
+                    <Text style={{ color: c.error, fontSize: 18 }}>{t('cancel', 'Отмена')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </Animated.View>
+        )}
+        <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
+        <FlatList
+          data={filteredTasks}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <Divider style={[styles.divider, { backgroundColor: c.divider }]} />}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -583,6 +725,128 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  iosBlock: {
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#222',
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  iosRowHorizontal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 12,
+  },
+  iosCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  iosLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'left',
+  },
+  iosPickerWrap: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  iosPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: '#F2F2F7',
+    marginBottom: 2,
+    marginTop: 2,
+  },
+  iosPickerValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  iosInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 0,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  iosInputText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  iosMeta: {
+    fontSize: 13,
+    fontWeight: '500',
+    opacity: 0.8,
+  },
+  iosButton: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    marginBottom: 0,
+  },
+  iosButtonText: {
+    color: '#222',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    minWidth: 240,
+    alignItems: 'stretch',
+  },
+  modalOption: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  iosButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  iosCancelBtn: {
+    flex: 1,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1.5,
+  },
+  iosAddBtn: {
+    flex: 1,
+    borderRadius: 12,
+    marginLeft: 8,
   },
 });
 
