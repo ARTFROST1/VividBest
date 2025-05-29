@@ -20,6 +20,7 @@ interface NoteItem {
   pinned: boolean;
   status?: NoteStatus; // только для заметок
   children?: NoteItem[];
+  content?: string; // добавлено для хранения содержимого заметки
 }
 
 const initialNotes: NoteItem[] = [];
@@ -109,23 +110,61 @@ const NotesScreen = () => {
   const [renameValue, setRenameValue] = useState('');
   const [createMode, setCreateMode] = useState<'note' | 'folder' | 'both'>('both');
 
+  // Функция для загрузки всех заметок и папок из AsyncStorage
+  const loadAllNotes = async () => {
+    const savedNotesRaw = await AsyncStorage.getItem('notes');
+    const savedFolder = await AsyncStorage.getItem('lastFolder');
+    if (savedNotesRaw) {
+      const savedNotes: NoteItem[] = JSON.parse(savedNotesRaw);
+
+      // Также загрузим содержимое для каждой заметки, которое хранится отдельно
+      async function loadContentRecursively(items: NoteItem[]): Promise<NoteItem[]> {
+        return Promise.all(items.map(async item => {
+          if (item.isFolder && item.children) {
+            return { ...item, children: await loadContentRecursively(item.children) };
+          }
+          if (!item.isFolder) {
+            try {
+              const noteRaw = await AsyncStorage.getItem(`note_${item.id}`);
+              if (noteRaw) {
+                const note = JSON.parse(noteRaw);
+                return { ...item, content: note.content, title: note.title }; // Обновляем и content, и title
+              }
+            } catch {}
+          }
+          return item;
+        }));
+      }
+
+      const notesWithContent = await loadContentRecursively(savedNotes);
+      setNotes(notesWithContent);
+    } else {
+      setNotes(initialNotes);
+    }
+    if (savedFolder) setActiveSidebarFilter(savedFolder);
+  };
+
   useEffect(() => {
-    (async () => {
-      const savedNotes = await AsyncStorage.getItem('notes');
-      const savedFolder = await AsyncStorage.getItem('lastFolder');
-      if (savedNotes) setNotes(JSON.parse(savedNotes));
-      if (savedFolder) setActiveSidebarFilter(savedFolder);
-    })();
+    // Загрузка при первом рендере
+    loadAllNotes();
+
     // Подписка на сброс
-    const handler = () => {
+    const resetHandler = () => {
       setNotes([]);
       setActiveSidebarFilter(null);
     };
-    notesEventBus.on('reset', handler);
+    notesEventBus.on('reset', resetHandler);
+
+    // Подписка на фокус (возврат с экрана NoteEditor)
+    const focusUnsubscribe = navigation.addListener('focus', () => {
+      loadAllNotes(); // Перезагружаем все данные при фокусе
+    });
+
     return () => {
-      notesEventBus.off('reset', handler);
+      notesEventBus.off('reset', resetHandler);
+      focusUnsubscribe();
     };
-  }, []);
+  }, [navigation]); // Зависимость только от navigation
 
   useEffect(() => {
     AsyncStorage.setItem('notes', JSON.stringify(notes));
@@ -190,6 +229,7 @@ const NotesScreen = () => {
       isFolder,
       pinned: false,
       children: isFolder ? [] : undefined,
+      content: isFolder ? undefined : '', // для заметок создаём пустое содержимое
     };
     if (activeSidebarFilter) {
       function addToFolder(items: NoteItem[]): NoteItem[] {
@@ -419,17 +459,52 @@ const NotesScreen = () => {
       return <Text style={[styles.emptyText, { color: c.placeholder }]}>{t('no_notes', 'Нет заметок')}</Text>;
     }
     return notes.map(note => (
-      <TouchableOpacity
+      <Swipeable
         key={note.id}
-        style={[styles.noteCard, { backgroundColor: c.surface, borderRadius: roundness, borderColor: c.border }]}
-        onPress={() => {
-          // @ts-ignore
-          navigation.navigate('NoteEditor', { id: note.id, title: note.title });
-        }}
+        renderRightActions={() => (
+          <LinearGradient
+            colors={['#f44336', '#f44336']}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 80,
+              height: '80%',
+              borderTopRightRadius: 12,
+              borderBottomRightRadius: 12,
+              marginTop: 3,
+            }}
+          >
+            <TouchableOpacity
+              style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+              onPress={() => handleSidebarDelete(note.id, false)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 17 }}>{t('delete', 'Удалить')}</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+        overshootRight={false}
       >
-        <Text style={[styles.noteTitle, { color: c.text }]} numberOfLines={1}>{note.title}</Text>
-        <Text style={[styles.noteSubtitle, { color: c.placeholder }]} numberOfLines={1}>Краткое описание или начало заметки...</Text>
-      </TouchableOpacity>
+        <Card style={[styles.noteCard, { backgroundColor: c.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
+          <TouchableOpacity
+            style={{ paddingVertical: 14, paddingHorizontal: 16 }}
+            onPress={() => {
+              // @ts-ignore
+              navigation.navigate('NoteEditor', { id: note.id, title: note.title });
+            }}
+            onLongPress={() => handleSidebarRename(note.id, false)}
+          >
+            <Text style={[styles.noteTitle, { color: c.text }]} numberOfLines={1}>{note.title}</Text>
+            <Text style={[styles.noteSubtitle, { color: c.placeholder }]} numberOfLines={1}>
+              {note.content
+                ? note.content.replace(/<[^>]+>/g, '').replace(/\n/g, ' ').slice(0, 80) + (note.content.replace(/<[^>]+>/g, '').length > 80 ? '…' : '')
+                : t('note_preview_placeholder', 'Нет текста')}
+            </Text>
+          </TouchableOpacity>
+        </Card>
+      </Swipeable>
     ));
   }
 
@@ -648,14 +723,21 @@ const NotesScreen = () => {
                   >
                     {t('cancel', 'Отмена')}
                   </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleAdd}
-                    style={[styles.modalAddBtnCustom, { backgroundColor: c.primary, borderRadius: roundness }]}
-                    textColor={c.onPrimary}
+                  <LinearGradient
+                    colors={['#7745dc', '#f34f8c']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.modalAddBtnCustom, { borderRadius: roundness }]}
                   >
-                    {t('create', 'Создать')}
-                  </Button>
+                    <Button
+                      mode="contained"
+                      onPress={handleAdd}
+                      style={{ backgroundColor: 'transparent', elevation: 0 }}
+                      textColor={'#fff'}
+                    >
+                      {t('create', 'Создать')}
+                    </Button>
+                  </LinearGradient>
                 </View>
               </View>
             </View>
@@ -709,12 +791,12 @@ const styles = StyleSheet.create({
   },
   notesMain: {
     flex: 1,
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
     paddingTop: 0,
     paddingBottom: 0,
   },
   searchBlock: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 9,
     paddingTop: 0,
     paddingBottom: 20,
   },
@@ -726,6 +808,7 @@ const styles = StyleSheet.create({
     height: 50,
     alignSelf: 'center',
     borderRadius: 100,
+    paddingVertical: 0,
   },
   notesListBlock: {
     flex: 1,
@@ -733,11 +816,12 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   noteCard: {
-    marginHorizontal: 16,
-    marginBottom: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
+    marginHorizontal: 0,
+    marginBottom: 8,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    borderWidth: 0,
+    marginRight: 0,
   },
   noteTitle: {
     fontWeight: 'bold',

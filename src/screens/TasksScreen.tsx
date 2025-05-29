@@ -24,9 +24,9 @@ interface Task {
 }
 
 const PRIORITY_COLORS = {
-  low: '#8BC34A',
-  medium: '#FFC107',
-  high: '#F44336',
+  low: '#83be7d',
+  medium: '#ebbf5a',
+  high: '#bf4c38',
 };
 
 const PRIORITY_LABELS = {
@@ -127,6 +127,11 @@ const TasksScreen = () => {
   const filteredTasks = tasks
     .filter(task => task.dueDate === formatDate(selectedDate))
     .sort((a, b) => {
+      // Сначала невыполненные, потом выполненные
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      // Внутри групп — по приоритету
       const order = { high: 2, medium: 1, low: 0 };
       return order[b.priority] - order[a.priority];
     });
@@ -327,7 +332,16 @@ const TasksScreen = () => {
       renderRightActions={() => renderRightActions(item)}
       overshootRight={false}
     >
-      <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
+      <Card style={[
+        styles.taskCard,
+        {
+          backgroundColor: colors.surface,
+          borderRadius: roundness,
+          shadowColor: c.text + '22',
+          elevation: 2,
+          opacity: item.completed ? 0.5 : 1,
+        },
+      ]}>
         <View style={styles.taskRow}>
           <Checkbox
             status={item.completed ? 'checked' : 'unchecked'}
@@ -335,13 +349,27 @@ const TasksScreen = () => {
             color={PRIORITY_COLORS[item.priority]}
           />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.taskTitle, { color: c.text, textDecorationLine: item.completed ? 'line-through' : 'none' }]}>{item.title}</Text>
-            <View style={styles.taskMetaRow}>
-              <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
-              <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
-              {item.tags && item.tags.map(tag => (
-                <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness}]}>{tag}</Text>
-              ))}
+            <View style={item.completed ? { opacity: 0.7 } : undefined}>
+              <Text
+                style={[
+                  styles.taskTitle,
+                  {
+                    color: c.text,
+                    textDecorationLine: item.completed ? 'line-through' : 'none',
+                  },
+                ]}
+              >
+                {item.title}
+              </Text>
+              <View style={styles.taskMetaRow}>
+                <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
+                <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
+                {item.tags && item.tags.map(tag => (
+                  <View key={tag} style={item.completed ? { opacity: 0.7 } : undefined}>
+                    <Text style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness }]}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         </View>
@@ -397,6 +425,11 @@ const TasksScreen = () => {
             mode={formatDate(selectedDate) === formatDate(new Date()) ? 'contained' : 'outlined'}
             onPress={() => setSelectedDate(new Date())}
             style={styles.dateButton}
+            textColor={
+              formatDate(selectedDate) === formatDate(new Date())
+                ? '#fff'
+                : undefined
+            }
           >
             {t('today', 'Сегодня')}
           </Button>
@@ -404,6 +437,11 @@ const TasksScreen = () => {
             mode={formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? 'contained' : 'outlined'}
             onPress={() => setSelectedDate(addDays(new Date(), 1))}
             style={styles.dateButton}
+            textColor={
+              formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
+                ? '#fff'
+                : undefined
+            }
           >
             {t('tomorrow', 'Завтра')}
           </Button>
@@ -597,18 +635,25 @@ const TasksScreen = () => {
                 >
                   {t('cancel', 'Отмена')}
                 </Button>
-                <Button
-                  mode="contained"
-                  onPress={() => {
-                    handleAddTask();
-                    setIsInputFocused(false);
-                    if (inputRef.current) inputRef.current.blur();
-                  }}
-                  style={[styles.iosAddBtn, { backgroundColor: colors.primary, borderRadius: roundness }]}
-                  textColor={colors.onPrimary}
+                <LinearGradient
+                  colors={['#7745dc', '#f34f8c']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.iosAddBtn, { borderRadius: roundness }]}
                 >
-                  {t('add', 'Добавить')}
-                </Button>
+                  <Button
+                    mode="contained"
+                    onPress={() => {
+                      handleAddTask();
+                      setIsInputFocused(false);
+                      if (inputRef.current) inputRef.current.blur();
+                    }}
+                    style={{ backgroundColor: 'transparent', elevation: 0 }}
+                    textColor={'#fff'}
+                  >
+                    {t('add', 'Добавить')}
+                  </Button>
+                </LinearGradient>
               </View>
             </View>
             {/* Модальные окна для Android (если нужно) */}
@@ -664,6 +709,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 16,
+    paddingTop: 10,
     textAlign: 'center',
   },
   inputRow: {
