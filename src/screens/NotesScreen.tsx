@@ -176,7 +176,7 @@ const NotesScreen = () => {
     }
   };
 
-  // handleAdd: запрещаем создание папки в папке второго уровня и глубже
+  // handleAdd: разрешаем создавать папки в корне, если выбран 'Корень'
   const handleAdd = () => {
     if (!newTitle.trim()) return;
     // Запрет на создание папки в папке второго уровня и глубже
@@ -453,7 +453,8 @@ const NotesScreen = () => {
 
   // onSelect: если id папки — выделяем, если id заметки — открываем редактор
   const handleSidebarSelect = (id: string | null) => {
-    if (!id) {
+    // Если выбран заголовок (корень)
+    if (id === null) {
       setActiveSidebarFilter(null);
       return;
     }
@@ -615,34 +616,50 @@ const NotesScreen = () => {
         )}
         {/* Диалог создания заметки/папки */}
         <Portal>
-          <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
-            <Dialog.Title style={{ color: c.text }}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label={t('name', 'Название')}
-                value={newTitle}
-                onChangeText={setNewTitle}
-                autoFocus
-                style={{ backgroundColor: c.background, color: c.text, borderRadius: roundness }}
-                placeholderTextColor={c.placeholder}
-              />
-              {createMode === 'both' && (
-                <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
-                  {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать_как_папку')}
-                </Button>
-              )}
-              {createMode === 'folder' && (
-                <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
-              )}
-              {createMode === 'note' && (
-                <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
-              )}
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setShowDialog(false)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
-              <Button onPress={handleAdd} textColor={c.primary}>{t('create', 'Создать')}</Button>
-            </Dialog.Actions>
-          </Dialog>
+          {showDialog && (
+            <View style={styles.modalOverlayCustom}>
+              <View style={[styles.modalContentCustom, { backgroundColor: c.surface, borderRadius: roundness * 1.5, shadowColor: c.text + '18' }]}> 
+                <Text style={[styles.modalTitleCustom, { color: c.text }]}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Text>
+                <TextInput
+                  label={t('name', 'Название')}
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  autoFocus
+                  style={[styles.modalInputCustom, { backgroundColor: c.background, color: c.text, borderRadius: roundness }]}
+                  placeholderTextColor={c.placeholder}
+                />
+                {createMode === 'both' && (
+                  <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
+                    {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать_как_папку')}
+                  </Button>
+                )}
+                {createMode === 'folder' && (
+                  <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
+                )}
+                {createMode === 'note' && (
+                  <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
+                )}
+                <View style={styles.modalButtonRowCustom}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setShowDialog(false)}
+                    style={[styles.modalCancelBtnCustom, { borderColor: c.primary, borderRadius: roundness }]}
+                    textColor={c.primary}
+                  >
+                    {t('cancel', 'Отмена')}
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleAdd}
+                    style={[styles.modalAddBtnCustom, { backgroundColor: c.primary, borderRadius: roundness }]}
+                    textColor={c.onPrimary}
+                  >
+                    {t('create', 'Создать')}
+                  </Button>
+                </View>
+              </View>
+            </View>
+          )}
         </Portal>
         {/* Диалог переименования */}
         <Portal>
@@ -775,6 +792,58 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+  },
+  modalOverlayCustom: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCustom: {
+    minWidth: 320,
+    maxWidth: 400,
+    width: '90%',
+    padding: 24,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 8,
+  },
+  modalTitleCustom: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalInputCustom: {
+    marginBottom: 12,
+    fontSize: 16,
+    borderRadius: 12,
+  },
+  modalButtonRowCustom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 12,
+  },
+  modalCancelBtnCustom: {
+    flex: 1,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1.5,
+  },
+  modalAddBtnCustom: {
+    flex: 1,
+    borderRadius: 12,
+    marginLeft: 8,
   },
 });
 

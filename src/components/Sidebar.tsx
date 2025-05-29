@@ -4,6 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
 import { Portal, Dialog, Button } from 'react-native-paper';
+import Folder1Icon from '../assets/icons/folder1.svg';
+import Note1Icon from '../assets/icons/note1.svg';
 
 // Тип папки
 export interface FolderNode {
@@ -27,11 +29,13 @@ const Sidebar: React.FC<SidebarProps & {
   onDeleteItem?: (id: string, isFolder: boolean) => void;
 }> = ({ folders, activeId, onSelect, onAddFolder, onOpenItem, onRenameItem, onDeleteItem, activeFolderLevel }) => {
   const { t } = useTranslation();
-  const { colors, roundness } = useTheme();
+  const { colors, roundness, dark } = useTheme();
   const [menuVisible, setMenuVisible] = React.useState(false);
   const [menuTarget, setMenuTarget] = React.useState<{ id: string; isFolder: boolean } | null>(null);
   // Для web: координаты меню
   const [menuPos, setMenuPos] = React.useState<{ x: number; y: number } | null>(null);
+
+  const noteColor = dark ? '#fff' : '#000'; 
 
   // Открыть меню (универсально)
   const openMenu = (id: string, isFolder: boolean, e?: any) => {
@@ -64,7 +68,7 @@ const Sidebar: React.FC<SidebarProps & {
       if (Platform.OS === 'web') folderBtnProps.onContextMenu = (e: any) => openMenu(item.id, true, e);
       const folderBtn = (
         <TouchableOpacity key={item.id} {...folderBtnProps}>
-          <MaterialCommunityIcons name="folder" size={22} color={colors.secondary} style={{ marginRight: 10 }} />
+          <Folder1Icon width={22} height={22} style={{ marginRight: 10 }} />
           <Text style={[styles.folderText, { color: colors.onSurface }]}>{item.title}</Text>
         </TouchableOpacity>
       );
@@ -80,7 +84,7 @@ const Sidebar: React.FC<SidebarProps & {
         if (Platform.OS === 'web') noteBtnProps.onContextMenu = (e: any) => openMenu(note.id, false, e);
         return (
           <TouchableOpacity key={note.id} {...noteBtnProps}>
-            <MaterialCommunityIcons name="file-document-outline" size={18} color={colors.onSurfaceVariant} style={{ marginRight: 8 }} />
+            <Note1Icon width={18} height={18} color={noteColor} style={{ marginRight: 8 }} />
             <Text style={[styles.noteText, { color: colors.onSurface }]}>{note.title}</Text>
           </TouchableOpacity>
         );
@@ -98,7 +102,17 @@ const Sidebar: React.FC<SidebarProps & {
   // Контекстное меню через Dialog/Portal
   return (
     <View style={[styles.sidebar, { backgroundColor: colors.background, borderRightColor: colors.outline }]}> 
-      <Text style={[styles.title, { color: colors.onSurface }]}>{t('folders_and_notes', 'Папки и заметки')}</Text>
+      {/* Заголовок как выделяемый и кликабельный элемент */}
+      <TouchableOpacity
+        style={[
+          styles.titleBtn,
+          { backgroundColor: activeId === null ? colors.primary + '22' : 'transparent', borderRadius: roundness },
+        ]}
+        onPress={() => onSelect(null)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.title, { color: colors.onSurface, fontWeight: 'bold' }]}>{t('folders_and_notes', 'Папки и заметки')}</Text>
+      </TouchableOpacity>
       <ScrollView showsVerticalScrollIndicator={false}>
         {renderFolders(folders)}
         <TouchableOpacity style={[styles.addFolderBtn, { borderRadius: roundness }]} onPress={onAddFolder}>
@@ -174,6 +188,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     letterSpacing: 0.2,
+  },
+  titleBtn: {
+    marginBottom: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'flex-start',
   },
 });
 

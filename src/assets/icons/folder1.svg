@@ -1,0 +1,22 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+ "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="512.000000pt" height="512.000000pt" viewBox="0 0 512.000000 512.000000"
+ preserveAspectRatio="xMidYMid meet">
+
+<defs>
+  <linearGradient id="folderGradient" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#6e04a8"/>
+    <stop offset="100%" stop-color="#fb5fc4"/>
+  </linearGradient>
+</defs>
+
+<g transform="translate(0.000000,512.000000) scale(0.100000,-0.100000)"
+fill="url(#folderGradient)" stroke="none">
+<path d="M755 4196 c-143 -46 -237 -150 -265 -291 -8 -44 -10 -422 -8 -1385
+l3 -1325 32 -67 c39 -82 100 -145 179 -184 l59 -29 1800 0 1800 0 63 29 c80
+37 161 122 194 203 l23 58 3 785 3 784 -398 398 -398 398 -504 0 -505 0 -290
+289 c-247 246 -300 294 -351 318 l-60 28 -670 2 c-523 2 -679 -1 -710 -11z"/>
+</g>
+</svg>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, IconButton, Menu, Divider, Chip } from 'react-native-paper';
+import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, LayoutChangeEvent } from 'react-native';
+import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, Menu, Divider, Chip } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
@@ -8,6 +8,8 @@ import { TagSelector } from '../components/TagSelector';
 import { PrioritySelector } from '../components/PrioritySelector';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Swipeable } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Task {
   id: string;
@@ -85,6 +87,8 @@ const TasksScreen = () => {
   const [showDatePickerInline, setShowDatePickerInline] = useState(false);
   const [showTimePickerInline, setShowTimePickerInline] = useState(false);
   const inputRef = useRef(null);
+  const [barWidth, setBarWidth] = useState(0);
+  const animatedProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -119,6 +123,24 @@ const TasksScreen = () => {
   useEffect(() => {
     AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  const filteredTasks = tasks
+    .filter(task => task.dueDate === formatDate(selectedDate))
+    .sort((a, b) => {
+      const order = { high: 2, medium: 1, low: 0 };
+      return order[b.priority] - order[a.priority];
+    });
+
+  const completedCount = filteredTasks.filter(t => t.completed).length;
+  const progress = filteredTasks.length > 0 ? completedCount / filteredTasks.length : 0;
+
+  useEffect(() => {
+    Animated.timing(animatedProgress, {
+      toValue: progress,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
 
   async function scheduleTaskNotification(task: Task): Promise<string | undefined> {
     if (!task.reminderTime) return undefined;
@@ -182,7 +204,7 @@ const TasksScreen = () => {
   const handleAddTask = async () => {
     if (newTask.trim()) {
       let notificationId: string | undefined = undefined;
-      if (reminderTime) {
+      if (reminderTime && sendNotification) {
         const hasPerm = await ensureNotificationPermission();
         if (hasPerm) {
           notificationId = await scheduleTaskNotification({
@@ -291,37 +313,40 @@ const TasksScreen = () => {
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const filteredTasks = tasks
-    .filter(task => task.dueDate === formatDate(selectedDate))
-    .sort((a, b) => {
-      const order = { high: 2, medium: 1, low: 0 };
-      return order[b.priority] - order[a.priority];
-    });
-
-  const completedCount = filteredTasks.filter(t => t.completed).length;
-  const progress = filteredTasks.length > 0 ? completedCount / filteredTasks.length : 0;
+  const renderRightActions = (item: Task) => (
+    <TouchableOpacity
+      style={styles.swipeDeleteButton}
+      onPress={() => handleDeleteTask(item.id)}
+    >
+      <Text style={styles.swipeDeleteText}>Delete</Text>
+    </TouchableOpacity>
+  );
 
   const renderItem = ({ item }: { item: Task }) => (
-    <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
-      <View style={styles.taskRow}>
-        <Checkbox
-          status={item.completed ? 'checked' : 'unchecked'}
-          onPress={() => handleToggleTask(item.id)}
-          color={PRIORITY_COLORS[item.priority]}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.taskTitle, { color: c.text, textDecorationLine: item.completed ? 'line-through' : 'none' }]}>{item.title}</Text>
-          <View style={styles.taskMetaRow}>
-            <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
-            <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
-            {item.tags && item.tags.map(tag => (
-              <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness}]}>{tag}</Text>
-            ))}
+    <Swipeable
+      renderRightActions={() => renderRightActions(item)}
+      overshootRight={false}
+    >
+      <Card style={[styles.taskCard, { backgroundColor: colors.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
+        <View style={styles.taskRow}>
+          <Checkbox
+            status={item.completed ? 'checked' : 'unchecked'}
+            onPress={() => handleToggleTask(item.id)}
+            color={PRIORITY_COLORS[item.priority]}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.taskTitle, { color: c.text, textDecorationLine: item.completed ? 'line-through' : 'none' }]}>{item.title}</Text>
+            <View style={styles.taskMetaRow}>
+              <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
+              <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
+              {item.tags && item.tags.map(tag => (
+                <Text key={tag} style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness}]}>{tag}</Text>
+              ))}
+            </View>
           </View>
         </View>
-        <IconButton icon="delete" onPress={() => handleDeleteTask(item.id)} iconColor={c.error} />
-      </View>
-    </Card>
+      </Card>
+    </Swipeable>
   );
 
   const handleDateChange = (event: any, date?: Date) => {
@@ -405,7 +430,32 @@ const TasksScreen = () => {
         )}
         {filteredTasks.length > 0 && (
           <View style={styles.progressContainer}>
-            <ProgressBar progress={progress} color={colors.primary} style={styles.progressBar} />
+            <View
+              style={[styles.progressBar, { backgroundColor: c.divider, overflow: 'hidden' }]}
+              onLayout={(e: LayoutChangeEvent) => setBarWidth(e.nativeEvent.layout.width)}
+            >
+              <LinearGradient
+                colors={['#7745dc', '#f34f8c']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              {barWidth > 0 && (
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: animatedProgress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [barWidth, 0],
+                    }),
+                    backgroundColor: c.divider,
+                  }}
+                />
+              )}
+            </View>
             <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
           </View>
         )}
@@ -847,6 +897,21 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     marginLeft: 8,
+  },
+  swipeDeleteButton: {
+    backgroundColor: '#F44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    height: '80%',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    marginTop: 3,
+  },
+  swipeDeleteText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
   },
 });
 
