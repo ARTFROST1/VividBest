@@ -21,7 +21,7 @@ export const lightTheme = {
     warning: '#FFC107',
     error: '#F44336',
     info: '#2196F3',
-    chipBg: '#E0E0E0',
+    chipBg: '#e4e3e9',
     chipText: '#181818',
     noteItem: '#FFFFFF',
     noteItemSelected: '#F0E6FA', // Светло-фиолетовый для выделенных заметок
@@ -44,14 +44,14 @@ export const darkTheme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#a56deb', // Более светлый фиолетовый для темной темы
+    primary: '#8a44da', // фиолетовый для темной темы
     secondary: '#F7B801', // Тот же акцентный жёлтый для консистентности
-    accent: '#F7B801', // Акцентный цвет для выделения элементов
-    background: '#181818', // Глубокий тёмный фон
-    surface: '#23232A',
+    accent: '#fff', // Акцентный цвет для выделения элементов
+    background: '#000', // Глубокий тёмный фон
+    surface: '#1c1c1e',
     onSurface: '#FFFFFF',
     onBackground: '#FFFFFF',
-    card: '#23232A',
+    card: '#fff',
     border: '#333333',
     text: '#FFFFFF',
     placeholder: '#888888',
@@ -63,9 +63,9 @@ export const darkTheme = {
     info: '#2196F3',
     chipBg: '#333333',
     chipText: '#FFFFFF',
-    noteItem: '#23232A',
+    noteItem: '#1c1c1e',
     noteItemSelected: '#3A2A4D', // Темно-фиолетовый для выделенных заметок
-    noteItemBorder: '#333333',
+    noteItemBorder: '#1c1c1e',
     folderItem: '#2A2A32',
     folderItemText: '#FFFFFF',
     swipeDelete: '#FF3B30',

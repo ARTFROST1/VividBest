@@ -340,11 +340,11 @@ const TasksScreen = () => {
           shadowColor: theme.dark ? '#000000' : '#000000',
           shadowOpacity: theme.dark ? 0.3 : 0.08,
           shadowRadius: 8,
-          shadowOffset: { width: 0, height: 2 },
+          shadowOffset: { width: 0, height: 1 },
           elevation: 2,
           opacity: item.completed ? 0.6 : 1,
           borderWidth: theme.dark ? 0.5 : 0,
-          borderColor: theme.dark ? '#38383A' : 'transparent',
+          borderColor: theme.dark ? '#1C1C1E' : 'transparent',
         },
       ]}>
         <View style={styles.taskRow}>
@@ -554,12 +554,12 @@ const TasksScreen = () => {
               style={[
                 styles.input, 
                 { 
-                  backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF',
-                  color: theme.dark ? '#FFFFFF' : '#000000',
-                  borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA'
+                  backgroundColor: theme.dark ? '#333333' : '#e4e3e9',
+                  color: theme.dark ? '#888888' : '#888888',
+                  borderColor: theme.dark ? '#333333' : '#e4e3e9'
                 }
               ]}
-              placeholderTextColor={theme.dark ? '#636366' : '#C7C7CC'}
+              placeholderTextColor={theme.dark ? '#888888' : '#888888'}
               onFocus={handleInputFocus}
               onBlur={() => {}}
             />
@@ -775,9 +775,9 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     paddingHorizontal: 8,
-    paddingVertical: 12,
+    paddingVertical: 1,
     backgroundColor: 'transparent',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   inputRow: {
     flexDirection: 'row',
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
     fontSize: 17,
-    height: 44,
+    height: 36,
     borderWidth: 0,
     borderRadius: 10,
     paddingHorizontal: 16,
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   taskCard: {
-    marginVertical: 6,
+    marginVertical: 2,
     marginHorizontal: 2,
     elevation: 2,
     padding: 0,
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
+    padding: 10,
     borderRadius: 12,
   },
   taskTitle: {

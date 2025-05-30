@@ -93,8 +93,356 @@ function moveItem(items: NoteItem[], itemId: string, targetFolderId: string | nu
 
 const NotesScreen = () => {
   const { t } = useTranslation();
-  const { colors, roundness } = useTheme();
-  const c = colors as any;
+  const theme = useTheme();
+  const { colors, roundness } = theme;
+  // Create a properly typed colors object that includes our custom theme colors
+  const c = colors as typeof theme.colors & {
+    noteItem: string;
+    noteItemSelected: string;
+    noteItemBorder: string;
+    folderItem: string;
+    folderItemText: string;
+    swipeDelete: string;
+    swipePin: string;
+    modalBackground: string;
+    modalBorder: string;
+    toolbarBackground: string;
+    editorBackground: string;
+    statusBarContent: 'dark-content' | 'light-content';
+    placeholder: string;
+    border: string;
+    chipBg: string;
+    chipText: string;
+    text: string;
+    onSurface: string;
+    background: string;
+  };
+  
+  // Define styles inside the component to access theme colors
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: c.background,
+    },
+    timeGroupHeader: {
+      fontSize: 23,
+      fontWeight: '700',
+      marginTop: 24,
+      marginBottom: 8,
+      paddingHorizontal: 16,
+      color: c.text,
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
+    },
+    headerTitle: {
+      fontSize: 34,
+      fontWeight: '700',
+      color: c.text,
+      letterSpacing: -0.5,
+    },
+    headerButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    headerButtonText: {
+      fontSize: 17,
+      fontWeight: '500',
+    },
+    headerButtonPlaceholder: {
+      width: 40,
+    },
+    notesMain: {
+      flex: 1,
+      paddingHorizontal: 1,
+      paddingTop: 12, // корректировка отступов
+      paddingBottom: 0,
+    },
+    searchBlock: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 16,
+    },
+    iosSearchField: {
+      height: 36,
+      backgroundColor: c.chipBg,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      fontSize: 17,
+      color: c.text,
+      width: '100%',
+    },
+    notesListBlock: {
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 0,
+    },
+    noteCardContainer: {
+      backgroundColor: c.noteItem,
+      marginBottom: 10,
+      borderRadius: 10,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+      marginHorizontal: 2,
+    },
+    noteCardContent: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    noteContentWrapper: {
+      flex: 1,
+      marginRight: 8,
+    },
+    noteTitle: {
+      fontWeight: '600',
+      fontSize: 17,
+      color: c.text,
+      marginBottom: 4,
+    },
+    pinnedIndicator: {
+      opacity: 0.8,
+    },
+    notePreviewContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    noteTime: {
+      fontSize: 15,
+      color: c.placeholder,
+      marginRight: 6,
+      fontWeight: '400',
+    },
+    noteSubtitle: {
+      fontSize: 15,
+      color: c.placeholder,
+      flex: 1,
+      fontWeight: '400',
+    },
+    noteAccessoryContainer: {
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+    },
+    noteAccessoryIcon: {
+      margin: 0,
+      padding: 0,
+    },
+    addButtonContainer: {
+      position: 'absolute',
+      right: 24,
+      bottom: 24,
+      elevation: 2,
+      zIndex: 100,
+    },
+    addButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: c.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    addButtonText: {
+      color: c.onSurface,
+      fontSize: 32,
+      fontWeight: '400',
+      marginTop: -4,
+    },
+    emptyText: {
+      textAlign: 'center',
+      marginTop: 32,
+      fontSize: 16,
+    },
+    webSidebarWrap: {
+      position: 'absolute',
+      left: 0,
+      top: 56, // высота AppBar
+      bottom: 0,
+      width: 280,
+      zIndex: 10,
+    },
+    overlayBg: {
+      flex: 1,
+      backgroundColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.4)',
+    },
+    mobileSidebarOverlay: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 100,
+      flexDirection: 'row',
+    },
+    mobileSidebar: {
+      width: 280,
+      height: '100%',
+      shadowColor: '#000',
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalOverlayCustom: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1000,
+      backgroundColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.4)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContentCustom: {
+      minWidth: 320,
+      maxWidth: 400,
+      width: '90%',
+      padding: 24,
+      borderRadius: 18,
+      backgroundColor: c.modalBackground,
+      shadowOpacity: 0.10,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 8,
+    },
+    modalTitleCustom: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 16,
+      textAlign: 'center',
+      color: c.text,
+    },
+    modalInputCustom: {
+      marginBottom: 12,
+      fontSize: 16,
+      borderRadius: 12,
+    },
+    modalButtonRowCustom: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 20,
+      gap: 12,
+    },
+    modalCancelBtnCustom: {
+      flex: 1,
+      borderRadius: 12,
+      marginRight: 8,
+      borderWidth: 1.5,
+    },
+    modalAddBtnCustom: {
+      flex: 1,
+      borderRadius: 12,
+      marginLeft: 8,
+    },
+    swipeActionContainer: {
+      flexDirection: 'row',
+      width: 90,
+      height: '100%',
+    },
+    swipeDeleteButton: {
+      backgroundColor: c.swipeDelete,
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 10,
+    },
+    swipeActionIcon: {
+      margin: 0,
+      padding: 0,
+      marginBottom: -2,
+    },
+    swipeActionText: {
+      color: c.onSurface,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    iosModalContent: {
+      backgroundColor: c.modalBackground,
+      borderRadius: 14,
+      padding: 20,
+      width: '90%',
+      maxWidth: 340,
+    },
+    iosModalTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: c.text,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    iosModalInput: {
+      height: 44,
+      backgroundColor: c.background,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      fontSize: 17,
+      marginBottom: 16,
+      color: c.text,
+    },
+    iosTypeToggle: {
+      padding: 8,
+      marginBottom: 16,
+    },
+    iosTypeToggleText: {
+      fontSize: 15,
+      color: c.primary,
+      textAlign: 'center',
+    },
+    iosModalHint: {
+      fontSize: 13,
+      color: c.placeholder,
+      marginBottom: 16,
+    },
+    iosModalButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      borderTopWidth: 0.5,
+      borderTopColor: c.border,
+      marginHorizontal: -20,
+      marginBottom: -20,
+    },
+    iosModalCancelButton: {
+      flex: 1,
+      height: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRightWidth: 0.5,
+      borderRightColor: c.border,
+    },
+    iosModalCancelText: {
+      color: c.primary,
+      fontSize: 17,
+      fontWeight: '400',
+    },
+    iosModalActionButton: {
+      flex: 1,
+      height: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iosModalActionText: {
+      color: c.primary,
+      fontSize: 17,
+      fontWeight: '600',
+    },
+  });
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
   const [showDialog, setShowDialog] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -924,328 +1272,4 @@ const NotesScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  timeGroupHeader: {
-    fontSize: 23,
-    fontWeight: '700',
-    marginTop: 24,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    color: '#000000',
-  },
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#181818', // Using theme text color
-    letterSpacing: -0.5,
-  },
-  headerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  headerButtonText: {
-    fontSize: 17,
-    fontWeight: '500',
-  },
-  headerButtonPlaceholder: {
-    width: 40,
-  },
-  notesMain: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
-  searchBlock: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  iosSearchField: {
-    height: 36,
-    backgroundColor: '#E9E9EB',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 17,
-    color: '#000000',
-    width: '100%',
-  },
-  notesListBlock: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 0,
-  },
-  noteCardContainer: {
-    backgroundColor: '#FFFFFF',
-    marginBottom: 8,
-    borderRadius: 10,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    marginHorizontal: 2,
-  },
-  noteCardContent: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  noteContentWrapper: {
-    flex: 1,
-    marginRight: 8,
-  },
-  noteTitle: {
-    fontWeight: '600',
-    fontSize: 17,
-    color: '#000000',
-    marginBottom: 4,
-  },
-  pinnedIndicator: {
-    opacity: 0.8,
-  },
-  notePreviewContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  noteTime: {
-    fontSize: 15,
-    color: '#8E8E93',
-    marginRight: 6,
-    fontWeight: '400',
-  },
-  noteSubtitle: {
-    fontSize: 15,
-    color: '#8E8E93',
-    flex: 1,
-    fontWeight: '400',
-  },
-  noteAccessoryContainer: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  noteAccessoryIcon: {
-    margin: 0,
-    padding: 0,
-  },
-  addButtonContainer: {
-    position: 'absolute',
-    right: 24,
-    bottom: 24,
-    elevation: 2,
-    zIndex: 100,
-  },
-  addButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#8a44da', // Using theme primary color
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '400',
-    marginTop: -4,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 32,
-    fontSize: 16,
-  },
-  webSidebarWrap: {
-    position: 'absolute',
-    left: 0,
-    top: 56, // высота AppBar
-    bottom: 0,
-    width: 280,
-    zIndex: 10,
-  },
-  overlayBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  mobileSidebarOverlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-    flexDirection: 'row',
-  },
-  mobileSidebar: {
-    width: 280,
-    height: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalOverlayCustom: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContentCustom: {
-    minWidth: 320,
-    maxWidth: 400,
-    width: '90%',
-    padding: 24,
-    borderRadius: 18,
-    backgroundColor: '#F2F2F7',
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 8,
-  },
-  modalTitleCustom: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  modalInputCustom: {
-    marginBottom: 12,
-    fontSize: 16,
-    borderRadius: 12,
-  },
-  modalButtonRowCustom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-    gap: 12,
-  },
-  modalCancelBtnCustom: {
-    flex: 1,
-    borderRadius: 12,
-    marginRight: 8,
-    borderWidth: 1.5,
-  },
-  modalAddBtnCustom: {
-    flex: 1,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  swipeActionContainer: {
-    flexDirection: 'row',
-    width: 90,
-    height: '100%',
-  },
-  swipeDeleteButton: {
-    backgroundColor: '#FF3B30',
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  swipeActionIcon: {
-    margin: 0,
-    padding: 0,
-    marginBottom: -2,
-  },
-  swipeActionText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  iosModalContent: {
-    backgroundColor: '#FFFFFF', // Using theme surface color
-    borderRadius: 14,
-    padding: 20,
-    width: '90%',
-    maxWidth: 340,
-  },
-  iosModalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#181818', // Using theme text color
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  iosModalInput: {
-    height: 44,
-    backgroundColor: '#F5F6FA', // Using theme background color
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 17,
-    marginBottom: 16,
-    color: '#181818', // Using theme text color
-  },
-  iosTypeToggle: {
-    padding: 8,
-    marginBottom: 16,
-  },
-  iosTypeToggleText: {
-    fontSize: 15,
-    color: '#8a44da', // Using theme primary color
-    textAlign: 'center',
-  },
-  iosModalHint: {
-    fontSize: 13,
-    color: '#888', // Using theme placeholder color
-    marginBottom: 16,
-  },
-  iosModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 0.5,
-    borderTopColor: '#E0E0E0', // Using theme border color
-    marginHorizontal: -20,
-    marginBottom: -20,
-  },
-  iosModalCancelButton: {
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 0.5,
-    borderRightColor: '#E0E0E0', // Using theme border color
-  },
-  iosModalCancelText: {
-    color: '#8a44da', // Using theme primary color
-    fontSize: 17,
-    fontWeight: '400',
-  },
-  iosModalActionButton: {
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iosModalActionText: {
-    color: '#8a44da', // Using theme primary color
-    fontSize: 17,
-    fontWeight: '600',
-  },
-});
-
-export default NotesScreen; 
+export default NotesScreen;
