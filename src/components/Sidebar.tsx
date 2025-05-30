@@ -3,9 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from '
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
-import { Portal, Dialog, Button } from 'react-native-paper';
-import Folder1Icon from '../assets/icons/folder1.svg';
-import Note1Icon from '../assets/icons/note1.svg';
+import IOSContextMenu from './IOSContextMenu';
 
 // Тип папки
 export interface FolderNode {
@@ -68,7 +66,7 @@ const Sidebar: React.FC<SidebarProps & {
       if (Platform.OS === 'web') folderBtnProps.onContextMenu = (e: any) => openMenu(item.id, true, e);
       const folderBtn = (
         <TouchableOpacity key={item.id} {...folderBtnProps}>
-          <Folder1Icon width={22} height={22} style={{ marginRight: 10 }} />
+          <MaterialCommunityIcons name="folder-outline" size={22} color={colors.primary} style={{ marginRight: 10 }} />
           <Text style={[styles.folderText, { color: colors.onSurface }]}>{item.title}</Text>
         </TouchableOpacity>
       );
@@ -84,7 +82,7 @@ const Sidebar: React.FC<SidebarProps & {
         if (Platform.OS === 'web') noteBtnProps.onContextMenu = (e: any) => openMenu(note.id, false, e);
         return (
           <TouchableOpacity key={note.id} {...noteBtnProps}>
-            <Note1Icon width={18} height={18} color={noteColor} style={{ marginRight: 8 }} />
+            <MaterialCommunityIcons name="note-outline" size={18} color={noteColor} style={{ marginRight: 8 }} />
             <Text style={[styles.noteText, { color: colors.onSurface }]}>{note.title}</Text>
           </TouchableOpacity>
         );
@@ -123,19 +121,29 @@ const Sidebar: React.FC<SidebarProps & {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-      <Portal>
-        <Dialog
-          visible={menuVisible}
-          onDismiss={closeMenu}
-          style={{ borderRadius: roundness, backgroundColor: colors.surface, position: Platform.OS === 'web' && menuPos ? 'absolute' : 'relative', left: menuPos?.x, top: menuPos?.y }}
-        >
-          <Dialog.Content>
-            <Button onPress={() => { closeMenu(); menuTarget && onOpenItem && onOpenItem(menuTarget.id, menuTarget.isFolder); }}>{t('open', 'Открыть')}</Button>
-            <Button onPress={() => { closeMenu(); menuTarget && onRenameItem && onRenameItem(menuTarget.id, menuTarget.isFolder); }}>{t('rename', 'Переименовать')}</Button>
-            <Button onPress={() => { closeMenu(); menuTarget && onDeleteItem && onDeleteItem(menuTarget.id, menuTarget.isFolder); }} textColor={colors.error}>{t('delete', 'Удалить')}</Button>
-          </Dialog.Content>
-        </Dialog>
-      </Portal>
+      <IOSContextMenu
+        visible={menuVisible}
+        onDismiss={closeMenu}
+        position={menuPos}
+        actions={[
+          {
+            title: t('open', 'Открыть'),
+            onPress: () => menuTarget && onOpenItem && onOpenItem(menuTarget.id, menuTarget.isFolder),
+            icon: <MaterialCommunityIcons name="folder-open-outline" size={22} color={colors.primary} />
+          },
+          {
+            title: t('rename', 'Переименовать'),
+            onPress: () => menuTarget && onRenameItem && onRenameItem(menuTarget.id, menuTarget.isFolder),
+            icon: <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
+          },
+          {
+            title: t('delete', 'Удалить'),
+            onPress: () => menuTarget && onDeleteItem && onDeleteItem(menuTarget.id, menuTarget.isFolder),
+            icon: <MaterialCommunityIcons name="delete-outline" size={22} color="#FF3B30" />,
+            destructive: true
+          }
+        ]}
+      />
     </View>
   );
 };

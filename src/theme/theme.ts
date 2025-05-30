@@ -61,7 +61,7 @@ export const darkTheme = {
     warning: '#FFC107',
     error: '#F44336',
     info: '#2196F3',
-    chipBg: '#333333',
+    chipBg: '#1c1c1e', // строка поиска
     chipText: '#FFFFFF',
     noteItem: '#1c1c1e',
     noteItemSelected: '#3A2A4D', // Темно-фиолетовый для выделенных заметок

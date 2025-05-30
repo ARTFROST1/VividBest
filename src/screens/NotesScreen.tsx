@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notesEventBus from '../utils/notesEventBus';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import IOSContextMenu from '../components/IOSContextMenu';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -141,7 +143,7 @@ const NotesScreen = () => {
       paddingBottom: 8,
     },
     headerTitle: {
-      fontSize: 34,
+      fontSize: 30,
       fontWeight: '700',
       color: c.text,
       letterSpacing: -0.5,
@@ -259,7 +261,7 @@ const NotesScreen = () => {
       elevation: 4,
     },
     addButtonText: {
-      color: c.onSurface,
+      color: '#fff',
       fontSize: 32,
       fontWeight: '400',
       marginTop: -4,
@@ -458,6 +460,9 @@ const NotesScreen = () => {
   const [renameDialog, setRenameDialog] = useState<{id: string, isFolder: boolean} | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [createMode, setCreateMode] = useState<'note' | 'folder' | 'both'>('both');
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuTarget, setMenuTarget] = useState<{ id: string; isFolder: boolean } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   // Функция для загрузки всех заметок и папок из AsyncStorage
   const loadAllNotes = async () => {
@@ -957,7 +962,7 @@ const NotesScreen = () => {
               // @ts-ignore
               navigation.navigate('NoteEditor', { id: note.id, title: note.title });
             }}
-            onLongPress={() => handleSidebarRename(note.id, false)}
+            onLongPress={(e) => openNoteMenu(note.id, false, e)}
             activeOpacity={0.7}
           >
             <View style={styles.noteContentWrapper}>
@@ -1065,17 +1070,23 @@ const NotesScreen = () => {
     // Если удалили активную папку — сбросить фильтр
     if (isFolder && activeSidebarFilter === id) setActiveSidebarFilter(null);
   };
-
-  const handleRenameApply = () => {
+  
+  const handleRenameApply = async () => {
     if (!renameDialog) return;
+    
+    const timestamp = Date.now();
+    let updatedItem: NoteItem | null = null;
+    
     function rename(items: NoteItem[]): NoteItem[] {
       return items.map(item => {
         if (item.id === renameDialog.id) {
           // Если это заметка (не папка), обновляем таймстемп
           if (!renameDialog.isFolder) {
-            return { ...item, title: renameValue, timestamp: Date.now() };
+            updatedItem = { ...item, title: renameValue, timestamp };
+            return updatedItem;
           } else {
-            return { ...item, title: renameValue };
+            updatedItem = { ...item, title: renameValue };
+            return updatedItem;
           }
         }
         if (item.children) {
@@ -1084,9 +1095,58 @@ const NotesScreen = () => {
         return item;
       });
     }
-    setNotes(prev => rename(prev));
-    setRenameDialog(null);
-    setRenameValue('');
+    
+    // Обновляем заметки в state и сохраняем в AsyncStorage
+    setNotes(prev => {
+      const updated = rename(prev);
+      // Сохраняем обновленные заметки в AsyncStorage
+      AsyncStorage.setItem('notes', JSON.stringify(updated));
+      return updated;
+    });
+    
+    // Если это заметка (не папка), обновляем её в AsyncStorage
+    if (!renameDialog.isFolder) {
+      try {
+        // Загружаем текущую заметку из AsyncStorage
+        const noteKey = `note_${renameDialog.id}`;
+        const noteRaw = await AsyncStorage.getItem(noteKey);
+        
+        if (noteRaw) {
+          const note = JSON.parse(noteRaw);
+          // Обновляем заголовок и таймстемп, сохраняя остальное содержимое
+          await AsyncStorage.setItem(noteKey, JSON.stringify({
+            ...note,
+            title: renameValue,
+            timestamp
+          }));
+          
+          // Уведомляем через eventBus об обновлении заметки
+          notesEventBus.emit('noteUpdated', { id: renameDialog.id, timestamp });
+        }
+      } catch (error) {
+        console.error('Error saving renamed note:', error);
+      }
+    }
+  };
+  
+  // Open context menu
+  const openNoteMenu = (id: string, isFolder: boolean, e?: any) => {
+    setMenuTarget({ id, isFolder });
+    setMenuVisible(true);
+    
+    if (Platform.OS === 'web' && e) {
+      e.preventDefault();
+      setMenuPos({ x: e.clientX, y: e.clientY });
+    } else {
+      setMenuPos(null);
+    }
+  };
+
+  // Close context menu
+  const closeMenu = () => {
+    setMenuVisible(false);
+    setMenuTarget(null);
+    setMenuPos(null);
   };
 
   return (
@@ -1225,49 +1285,111 @@ const NotesScreen = () => {
             </View>
           )}
         </Portal>
-        {/* Диалог переименования в стиле iOS */}
-        <Portal>
-          {!!renameDialog && (
-            <View style={styles.modalOverlayCustom}>
-              <View style={styles.iosModalContent}>
-                <Text style={styles.iosModalTitle}>{t('rename', 'Переименовать')}</Text>
-                <TextInput
-                  placeholder={t('name', 'Название')}
-                  value={renameValue}
-                  onChangeText={setRenameValue}
-                  autoFocus
-                  style={styles.iosModalInput}
-                  placeholderTextColor="#8E8E93"
-                />
-                <View style={styles.iosModalButtons}>
-                  <TouchableOpacity
-                    onPress={() => setRenameDialog(null)}
-                    style={styles.iosModalCancelButton}
-                  >
-                    <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleRenameApply}
-                    style={styles.iosModalActionButton}
-                  >
-                    <Text style={styles.iosModalActionText}>{t('save', 'Сохранить')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
-        </Portal>
+        
+        {/* iOS-style Context Menu */}
+        <IOSContextMenu
+          visible={menuVisible}
+          onDismiss={closeMenu}
+          position={menuPos}
+          actions={[
+            {
+              title: t('open', 'Открыть'),
+              onPress: () => {
+                closeMenu();
+                menuTarget && handleSidebarOpen(menuTarget.id, menuTarget.isFolder);
+              },
+              icon: <MaterialCommunityIcons name="note-outline" size={22} color={colors.primary} />
+            },
+            {
+              title: t('rename', 'Переименовать'),
+              onPress: () => {
+                closeMenu();
+                if (menuTarget) {
+                  setRenameDialog({ id: menuTarget.id, isFolder: menuTarget.isFolder });
+                  // Find current name
+                  function findItem(items: NoteItem[]): NoteItem | null {
+                    for (const item of items) {
+                      if (item.id === menuTarget.id) return item;
+                      if (item.children) {
+                        const found = findItem(item.children);
+                        if (found) return found;
+                      }
+                    }
+                    return null;
+                  }
+                  const found = findItem(notes);
+                  setRenameValue(found?.title || '');
+                }
+              },
+              icon: <MaterialCommunityIcons name="pencil-outline" size={22} color={colors.primary} />
+            },
+            {
+              title: t('delete', 'Удалить'),
+              onPress: () => {
+                closeMenu();
+                menuTarget && handleSidebarDelete(menuTarget.id, menuTarget.isFolder);
+              },
+              icon: <MaterialCommunityIcons name="delete-outline" size={22} color="#FF3B30" />,
+              destructive: true
+            }
+          ]}
+        />
         {/* Кнопка добавить в стиле iOS */}
         <TouchableOpacity 
           style={styles.addButtonContainer}
           onPress={() => openCreateDialog('main')}
           activeOpacity={0.8}
         >
-          <View style={styles.addButton}>
+          <LinearGradient
+            colors={['#7745dc', '#f34f8c']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButton}
+          >
             <Text style={styles.addButtonText}>+</Text>
-          </View>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* iOS-style Rename Dialog */}
+      <Portal>
+        {renameDialog && (
+          <View style={styles.modalOverlayCustom}>
+            <View style={styles.iosModalContent}> 
+              <Text style={styles.iosModalTitle}>
+                {t('rename', 'Переименовать')} {renameDialog.isFolder ? t('folder', 'папку') : t('note', 'заметку')}
+              </Text>
+              <TextInput
+                placeholder={renameDialog.isFolder ? t('folder_name', 'Имя папки') : t('note_name', 'Имя заметки')}
+                value={renameValue}
+                onChangeText={setRenameValue}
+                autoFocus
+                style={styles.iosModalInput}
+                placeholderTextColor="#8E8E93"
+              />
+              <View style={styles.iosModalButtons}>
+                <TouchableOpacity
+                  onPress={() => setRenameDialog(null)}
+                  style={styles.iosModalCancelButton}
+                >
+                  <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (renameDialog) {
+                      handleRenameApply();
+                      setRenameDialog(null);
+                    }
+                  }}
+                  style={styles.iosModalActionButton}
+                >
+                  <Text style={styles.iosModalActionText}>{t('rename', 'Переименовать')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      </Portal>
     </View>
   );
 };

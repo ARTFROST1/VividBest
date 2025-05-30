@@ -28,8 +28,8 @@ export default function NoteEditorScreen({ route, navigation }) {
   const c = colors as any;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { id, title: initialTitle } = route?.params || {};
-  const [title, setTitle] = useState(initialTitle || '');
+  const { id } = route?.params || {};
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const isFirstLoad = useRef(true);
   const richText = useRef<any>(null);

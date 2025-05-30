@@ -29,7 +29,7 @@ const SettingsScreen = () => {
       marginTop: 16,
       marginBottom: 20,
       textAlign: 'center',
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: 'bold',
     },
     section: {
@@ -214,11 +214,11 @@ const SettingsScreen = () => {
     },
     languageText: {
       fontSize: 14,
-      color: c.placeholder,
+      color: "c.placeholder",
     },
     languageTextActive: {
       fontWeight: 'bold',
-      color: c.onSurface,
+      color: "#FFF",
     },
   });
   const [language, setLanguage] = useState<'ru' | 'en'>(

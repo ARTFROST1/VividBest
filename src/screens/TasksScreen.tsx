@@ -554,7 +554,7 @@ const TasksScreen = () => {
               style={[
                 styles.input, 
                 { 
-                  backgroundColor: theme.dark ? '#333333' : '#e4e3e9',
+                  backgroundColor: theme.dark ? '#1c1c1e' : '#e4e3e9',
                   color: theme.dark ? '#888888' : '#888888',
                   borderColor: theme.dark ? '#333333' : '#e4e3e9'
                 }
@@ -573,7 +573,7 @@ const TasksScreen = () => {
               transform: [{ translateY: optionsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
               marginBottom: 12,
               backgroundColor: colors.elevation?.level2 || (theme.dark ? colors.surface : colors.background),
-              borderRadius: roundness * 2,
+              borderRadius: roundness * 2, 
               padding: 16,
               shadowColor: theme.dark ? '#000' : '#222',
               shadowOpacity: 0.10,
@@ -674,7 +674,7 @@ const TasksScreen = () => {
                   value={sendNotification}
                   onValueChange={setSendNotification}
                   thumbColor={sendNotification ? '#FFFFFF' : '#FFFFFF'}
-                  trackColor={{ true: '#34C759', false: theme.dark ? '#636366' : '#E5E5EA' }}
+                  trackColor={{ true: '#8a44da', false: theme.dark ? '#636366' : '#E5E5EA' }}
                   ios_backgroundColor={theme.dark ? '#636366' : '#E5E5EA'}
                 />
               </View>
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   header: {
-    fontSize: 20,
+    fontSize: 30,
     fontWeight: '600',
     marginBottom: 16,
     paddingTop: 12,

@@ -107,7 +107,7 @@ const NotificationsSettingsScreen = ({ navigation }) => {
           <Switch
             value={notificationsSound}
             onValueChange={setNotificationsSound}
-            trackColor={{ false: '#e9e9ea', true: '#34c759' }}
+            trackColor={{ false: '#e9e9ea', true: '#8a44da' }}
             thumbColor={'#ffffff'}
             ios_backgroundColor="#e9e9ea"
             style={styles.iosSwitch}
@@ -123,7 +123,7 @@ const NotificationsSettingsScreen = ({ navigation }) => {
           <Switch
             value={notificationsImportantOnly}
             onValueChange={setNotificationsImportantOnly}
-            trackColor={{ false: '#e9e9ea', true: '#34c759' }}
+            trackColor={{ false: '#e9e9ea', true: '#8a44da' }}
             thumbColor={'#ffffff'}
             ios_backgroundColor="#e9e9ea"
             style={styles.iosSwitch}
