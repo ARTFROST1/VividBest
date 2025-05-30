@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Switch, RadioButton, List, Divider, Button, useTheme, Card, Dialog, Portal } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useThemeToggle } from '../context/ThemeToggleContext';
@@ -9,12 +10,217 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import notesEventBus from '../utils/notesEventBus';
+import { Ionicons } from '@expo/vector-icons';
 
 const SettingsScreen = () => {
+  const navigation = useNavigation();
   const { isDark, toggleTheme } = useThemeToggle();
   const { t } = useTranslation();
   const { colors, roundness } = useTheme();
   const c = colors as any;
+  
+  // Define styles inside the component to access the theme colors
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingBottom: 32,
+    },
+    header: {
+      marginTop: 16,
+      marginBottom: 20,
+      textAlign: 'center',
+      fontSize: 32,
+      fontWeight: 'bold',
+    },
+    section: {
+      marginBottom: 20,
+      borderRadius: 12,
+      backgroundColor: c.surface,
+      overflow: 'hidden',
+      marginHorizontal: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: c.placeholder,
+      marginLeft: 20,
+      marginBottom: 8,
+      marginTop: 16,
+    },
+    sectionHeader: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: c.divider,
+    },
+    sectionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      minHeight: 44,
+    },
+    rowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    rowRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    itemText: {
+      fontSize: 16,
+      fontWeight: '400',
+    },
+    valueText: {
+      fontSize: 16,
+      color: c.placeholder,
+      marginRight: 8,
+    },
+    subtitleText: {
+      fontSize: 12,
+      color: c.placeholder,
+      marginTop: 2,
+    },
+    divider: {
+      height: 0.5,
+      backgroundColor: c.divider,
+      marginLeft: 16,
+    },
+    iosSwitch: {
+      transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+    },
+    timePickerButton: {
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: c.background,
+    },
+    timeText: {
+      fontSize: 16,
+      color: c.primary,
+      fontWeight: '500',
+    },
+    pickerContainer: {
+      flex: 1,
+      alignItems: 'flex-end',
+    },
+    radioRow: {
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+    },
+    radioItem: {
+      paddingVertical: 2,
+      paddingHorizontal: 0,
+    },
+    fontSizeControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    fontSizeButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: c.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    fontSizeButtonText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: c.primary,
+    },
+    fontSizeText: {
+      marginHorizontal: 10,
+      fontSize: 16,
+    },
+    userInfo: {
+      padding: 16,
+      alignItems: 'center',
+    },
+    userEmail: {
+      fontSize: 16,
+      fontWeight: '500',
+      marginBottom: 4,
+    },
+    userName: {
+      fontSize: 14,
+      opacity: 0.7,
+    },
+    logoutButton: {
+      marginHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    logoutButtonText: {
+      color: c.surface,
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    resetButton: {
+      marginHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginTop: 12,
+      borderWidth: 1,
+      backgroundColor: 'transparent',
+    },
+    dialogButton: {
+      paddingHorizontal: 20,
+      borderRadius: 10,
+    },
+    premiumRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    premiumText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    unlockText: {
+      fontSize: 14,
+      color: c.placeholder,
+      marginRight: 8,
+    },
+    chevronContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    languageSelector: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    languageButton: {
+      padding: 6,
+      borderRadius: 8,
+      marginRight: 8,
+      backgroundColor: c.background,
+    },
+    languageButtonActive: {
+      backgroundColor: c.primary,
+    },
+    languageText: {
+      fontSize: 14,
+      color: c.placeholder,
+    },
+    languageTextActive: {
+      fontWeight: 'bold',
+      color: c.onSurface,
+    },
+  });
   const [language, setLanguage] = useState<'ru' | 'en'>(
     (i18n.language === 'ru' || i18n.language === 'en') ? i18n.language : 'en'
   );
@@ -89,8 +295,6 @@ const SettingsScreen = () => {
     })();
   }, []);
 
-  // TODO: интеграция с глобальным состоянием темы и языка
-
   const handleResetAll = async () => {
     await AsyncStorage.removeItem('notes');
     await AsyncStorage.removeItem('lastFolder');
@@ -98,157 +302,193 @@ const SettingsScreen = () => {
     setResetDialogVisible(false);
   };
 
+  const handleDndStartChange = (event: any, selectedTime?: Date) => {
+    setShowDndStartPicker(false);
+    if (selectedTime) {
+      const hours = selectedTime.getHours().toString().padStart(2, '0');
+      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+      setDndStart(`${hours}:${minutes}`);
+    }
+  };
+
+  const handleDndEndChange = (event: any, selectedTime?: Date) => {
+    setShowDndEndPicker(false);
+    if (selectedTime) {
+      const hours = selectedTime.getHours().toString().padStart(2, '0');
+      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+      setDndEnd(`${hours}:${minutes}`);
+    }
+  };
+
+  // Helper function to convert time string to Date object
+  const timeStringToDate = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  };
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Card style={[styles.userCard, { backgroundColor: colors.surface, borderRadius: roundness, marginBottom: 16 }]}> 
-        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 2, color: c.text }}>Аккаунт</Text>
-        <Text style={{ fontSize: 16, color: c.text }}>Имя: {user?.name || '—'}</Text>
-        <Text style={{ fontSize: 16, color: c.text }}>Email: {user?.email || '—'}</Text>
-      </Card>
-      <Text style={[styles.header, { color: c.text }]}>{t('settings')}</Text>
-      <Card style={[styles.card, { backgroundColor: colors.surface, borderRadius: roundness }]}>
-        <List.Section>
-          <List.Subheader style={[styles.subheader, { color: c.text }]}>{t('theme')}</List.Subheader>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('dark')}</Text>
-            <Switch value={isDark} onValueChange={toggleTheme} color={colors.primary} />
+    <ScrollView style={[styles.container, { backgroundColor: isDark ? c.background : c.background }]}>
+      <Text style={[styles.header, { color: c.text }]}>{t('settings', 'Настройки')}</Text>
+      
+      {/* General Section */}
+      <Text style={styles.sectionTitle}>{t('general', 'Общий')}</Text>
+      <View style={styles.section}>
+        <View style={styles.sectionItem}>
+          <View style={styles.rowLeft}>
+            <Ionicons name="notifications" size={22} color="#007AFF" style={{ marginRight: 12 }} />
+            <Text style={[styles.itemText, { color: c.text }]}>
+              {t('notifications', 'Уведомления')}
+            </Text>
           </View>
-        </List.Section>
-        <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        <List.Section>
-          <List.Subheader style={[styles.subheader, { color: c.text }]}>{t('language')}</List.Subheader>
-          <RadioButton.Group onValueChange={v => {
-            setLanguage(v as 'ru' | 'en');
-            i18n.changeLanguage(v);
-          }} value={language}>
-            <View style={styles.row}>
-              <RadioButton value="ru" color={colors.primary} />
-              <Text style={[styles.label, { color: c.text }]}>Русский</Text>
-            </View>
-            <View style={styles.row}>
-              <RadioButton value="en" color={colors.primary} />
-              <Text style={[styles.label, { color: c.text }]}>English</Text>
-            </View>
-          </RadioButton.Group>
-        </List.Section>
-        <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        <List.Section>
-          <List.Subheader style={[styles.subheader, { color: c.text }]}>{t('sort_order', 'Порядок задач')}</List.Subheader>
-          <RadioButton.Group onValueChange={v => setSortOrder(v as 'date' | 'priority' | 'alpha')} value={sortOrder}>
-            <View style={styles.row}>
-              <RadioButton value="date" color={colors.primary} />
-              <Text style={[styles.label, { color: c.text }]}>{t('sort_by_date', 'По дате')}</Text>
-            </View>
-            <View style={styles.row}>
-              <RadioButton value="priority" color={colors.primary} />
-              <Text style={[styles.label, { color: c.text }]}>{t('sort_by_priority', 'По приоритету')}</Text>
-            </View>
-            <View style={styles.row}>
-              <RadioButton value="alpha" color={colors.primary} />
-              <Text style={[styles.label, { color: c.text }]}>{t('sort_by_alpha', 'По алфавиту')}</Text>
-            </View>
-          </RadioButton.Group>
-        </List.Section>
-        <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        <List.Section>
-          <List.Subheader style={[styles.subheader, { color: c.text }]}>{t('notifications', 'Уведомления')}</List.Subheader>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('sound', 'Звук')}</Text>
-            <Switch value={notificationsSound} onValueChange={setNotificationsSound} color={colors.primary} />
+          <Switch
+            value={notificationsSound}
+            onValueChange={setNotificationsSound}
+            trackColor={{ false: c.border, true: c.primary }}
+            thumbColor={'#ffffff'}
+            ios_backgroundColor={c.border}
+            style={styles.iosSwitch}
+          />
+        </View>
+        
+        <Divider style={styles.divider} />
+        
+        <View style={styles.sectionItem}>
+          <View style={styles.rowLeft}>
+            <Ionicons name="globe" size={22} color={c.primary} style={{ marginRight: 12 }} />
+            <Text style={[styles.itemText, { color: c.text }]}>
+              {t('language', 'Язык')}
+            </Text>
           </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('important_only', 'Только важные')}</Text>
-            <Switch value={notificationsImportantOnly} onValueChange={setNotificationsImportantOnly} color={colors.primary} />
-          </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('dnd', 'Не беспокоить')}</Text>
-            <Button mode="outlined" onPress={() => setShowDndStartPicker(true)} style={styles.timeButton} textColor={colors.primary}>{dndStart}</Button>
-            <Text style={{ marginHorizontal: 4, color: c.text }}>–</Text>
-            <Button mode="outlined" onPress={() => setShowDndEndPicker(true)} style={styles.timeButton} textColor={colors.primary}>{dndEnd}</Button>
-          </View>
-          {showDndStartPicker && (
-            <DateTimePicker
-              value={new Date(`1970-01-01T${dndStart}:00`)}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={(e, date) => {
-                setShowDndStartPicker(false);
-                if (date) {
-                  const h = date.getHours().toString().padStart(2, '0');
-                  const m = date.getMinutes().toString().padStart(2, '0');
-                  setDndStart(`${h}:${m}`);
-                }
+          <View style={styles.languageSelector}>
+            <TouchableOpacity 
+              style={[styles.languageButton, language === 'ru' ? styles.languageButtonActive : null]}
+              onPress={() => {
+                setLanguage('ru');
+                i18n.changeLanguage('ru');
               }}
-            />
-          )}
-          {showDndEndPicker && (
-            <DateTimePicker
-              value={new Date(`1970-01-01T${dndEnd}:00`)}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={(e, date) => {
-                setShowDndEndPicker(false);
-                if (date) {
-                  const h = date.getHours().toString().padStart(2, '0');
-                  const m = date.getMinutes().toString().padStart(2, '0');
-                  setDndEnd(`${h}:${m}`);
-                }
+            >
+              <Text style={[styles.languageText, language === 'ru' ? styles.languageTextActive : null]}>Русский</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.languageButton, language === 'en' ? styles.languageButtonActive : null]}
+              onPress={() => {
+                setLanguage('en');
+                i18n.changeLanguage('en');
               }}
-            />
-          )}
-        </List.Section>
-        <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        <List.Section>
-          <List.Subheader style={[styles.subheader, { color: c.text }]}>{t('editor', 'Редактор')}</List.Subheader>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('autosave', 'Автосохранение')}</Text>
-            <Switch value={autosave} onValueChange={setAutosave} color={colors.primary} />
+            >
+              <Text style={[styles.languageText, language === 'en' ? styles.languageTextActive : null]}>English</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('font', 'Шрифт')}</Text>
-            <RadioButton.Group onValueChange={v => setFont(v as any)} value={font}>
-              <View style={styles.fontRow}>
-                <RadioButton value="system" color={colors.primary} />
-                <Text style={[styles.label, { color: c.text }]}>{t('font_system', 'Системный')}</Text>
-                <RadioButton value="monospace" color={colors.primary} />
-                <Text style={[styles.label, { color: c.text }]}>{t('font_monospace', 'Моноширинный')}</Text>
-                <RadioButton value="serif" color={colors.primary} />
-                <Text style={[styles.label, { color: c.text }]}>{t('font_serif', 'С засечками')}</Text>
-              </View>
-            </RadioButton.Group>
+        </View>
+        
+        <Divider style={styles.divider} />
+        
+        <TouchableOpacity 
+          style={styles.sectionItem}
+          onPress={() => navigation.navigate('EditorSettings')}
+        >
+          <View style={styles.rowLeft}>
+            <Ionicons name="create" size={22} color={c.primary} style={{ marginRight: 12 }} />
+            <Text style={[styles.itemText, { color: c.text }]}>
+              {t('editor_settings', 'Настройки редактора')}
+            </Text>
           </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('font_size', 'Размер шрифта')}</Text>
-            <Button mode="outlined" onPress={() => setFontSize(s => Math.max(10, s - 1))} style={styles.sizeBtn} textColor={colors.primary}>-</Button>
-            <Text style={{ marginHorizontal: 8, color: c.text }}>{fontSize}</Text>
-            <Button mode="outlined" onPress={() => setFontSize(s => Math.min(32, s + 1))} style={styles.sizeBtn} textColor={colors.primary}>+</Button>
+          <Ionicons name="chevron-forward" size={20} color={c.placeholder} />
+        </TouchableOpacity>
+        
+      </View>
+      
+      {/* App Section */}
+      <Text style={styles.sectionTitle}>{t('application', 'Приложение')}</Text>
+      <View style={styles.section}>
+        <TouchableOpacity style={styles.sectionItem}>
+          <View style={styles.rowLeft}>
+            <Ionicons name="heart" size={22} color={c.error} style={{ marginRight: 12 }} />
+            <View>
+              <Text style={[styles.itemText, { color: c.text }]}>
+                {t('rate_vivid', 'Оценить Vivid')}
+              </Text>
+              <Text style={styles.subtitleText}>
+                {t('thanks_for_support', 'Спасибо вам за поддержку!')}
+              </Text>
+            </View>
           </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: c.text }]}>{t('line_numbers', 'Номера строк')}</Text>
-            <Switch value={showLineNumbers} onValueChange={setShowLineNumbers} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={20} color={c.placeholder} />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Theme Toggle Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionItem}>
+          <Text style={[styles.itemText, { color: c.text }]}>
+            {t('dark_theme', 'Темная тема')}
+          </Text>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: c.border, true: c.primary }}
+            thumbColor={'#ffffff'}
+            ios_backgroundColor={c.border}
+            style={styles.iosSwitch}
+          />
+        </View>
+      </View>
+      
+      {/* Account Section */}
+      {user && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>{t('account', 'Аккаунт')}</Text>
+          <View style={styles.userInfo}>
+            <Text style={[styles.userEmail, { color: c.text }]}>{user.email}</Text>
+            {user.name && <Text style={[styles.userName, { color: c.text }]}>{user.name}</Text>}
           </View>
-        </List.Section>
-      </Card>
-      <Button mode="contained" style={[styles.button, { backgroundColor: colors.error, borderRadius: roundness }]} textColor={'#fff'} onPress={logout}>
-        {t('logout', 'Выйти из аккаунта')}
-      </Button>
-      <Button mode="outlined" style={[styles.button, { borderColor: colors.error, marginTop: 12 }]} textColor={colors.error} onPress={() => setResetDialogVisible(true)}>
-        {t('reset_all', 'Сбросить всё')}
-      </Button>
+          <TouchableOpacity 
+            style={[styles.logoutButton, { backgroundColor: c.error }]}
+            onPress={logout}
+          >
+            <Text style={styles.logoutButtonText}>{t('logout', 'Выйти из аккаунта')}</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.resetButton, { borderColor: c.error }]}
+            onPress={() => setResetDialogVisible(true)}
+          >
+            <Text style={{ color: c.error }}>{t('reset_all', 'Сбросить всё')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
       <Portal>
-        <Dialog visible={resetDialogVisible} onDismiss={() => setResetDialogVisible(false)} style={{ borderRadius: roundness, backgroundColor: colors.surface }}>
-          <Dialog.Title style={{ color: c.text }}>{t('confirm_reset', 'Подтвердите сброс')}</Dialog.Title>
+        <Dialog 
+          visible={resetDialogVisible} 
+          onDismiss={() => setResetDialogVisible(false)} 
+          style={{ borderRadius: 14, backgroundColor: c.surface }}
+        >
+          <Dialog.Title style={{ color: c.text, textAlign: 'center' }}>
+            {t('confirm_reset', 'Подтвердите сброс')}
+          </Dialog.Title>
           <Dialog.Content>
-            <Text style={{ color: c.text }}>{t('reset_all_confirm', 'Вы уверены, что хотите удалить все заметки и папки? Это действие необратимо.')}</Text>
+            <Text style={{ color: c.text, textAlign: 'center' }}>
+              {t('reset_all_confirm', 'Вы уверены, что хотите удалить все заметки и папки? Это действие необратимо.')}
+            </Text>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setResetDialogVisible(false)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
-            <Button onPress={handleResetAll} textColor={colors.error}>{t('reset', 'Сбросить')}</Button>
+          <Dialog.Actions style={{ justifyContent: 'space-around' }}>
+            <Button 
+              onPress={() => setResetDialogVisible(false)} 
+              textColor={c.primary}
+              style={styles.dialogButton}
+            >
+              {t('cancel', 'Отмена')}
+            </Button>
+            <Button 
+              onPress={handleResetAll} 
+              textColor="#FF3B30"
+              style={styles.dialogButton}
+            >
+              {t('reset', 'Сбросить')}
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -256,77 +496,6 @@ const SettingsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  header: {
-    marginTop: 8,
-    marginBottom: 10,
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  card: {
-    padding: 0,
-    marginBottom: 16,
-    elevation: 2,
-  },
-  subheader: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 2,
-    marginTop: 10,
-    letterSpacing: 0.2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 8,
-    minHeight: 44,
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  divider: {
-    marginVertical: 4,
-    height: 5,
-  },
-  button: {
-    marginTop: 8,
-    alignSelf: 'center',
-    minWidth: 180,
-    paddingVertical: 8,
-    elevation: 2,
-  },
-  timeButton: {
-    minWidth: 60,
-    marginHorizontal: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#0000',
-  },
-  fontRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  sizeBtn: {
-    minWidth: 36,
-    borderRadius: 8,
-    marginHorizontal: 0,
-  },
-  userCard: {
-    padding: 16,
-    alignSelf: 'stretch',
-    elevation: 2,
-  },
-});
 
-export default SettingsScreen; 
+
+export default SettingsScreen;

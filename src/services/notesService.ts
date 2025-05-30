@@ -6,6 +6,7 @@ export interface NoteData {
   id: string;
   title: string;
   content: string;
+  timestamp?: number; // Время создания/изменения заметки
 }
 
 const SUPABASE_URL = 'https://fhbzxfwihphbbqymnwfh.supabase.co';

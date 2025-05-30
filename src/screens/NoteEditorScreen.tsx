@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Appbar, IconButton, useTheme, Text } from 'react-native-paper';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, StatusBar, SafeAreaView, TouchableOpacity } from 'react-native';
+import { TextInput, Appbar, IconButton, useTheme, Text, Surface } from 'react-native-paper';
 import { saveNoteLocal, loadNoteLocal, NoteData } from '../services/notesService';
+import notesEventBus from '../utils/notesEventBus';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadNoteImage } from '../services/notesService';
 import { fetchLinkPreview } from '../utils/linkPreview';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const formattingButtons = [
   { icon: 'format-bold', markdown: '**', tooltip: 'Жирный' },
@@ -22,9 +24,10 @@ const customActions = {
 };
 
 export default function NoteEditorScreen({ route, navigation }) {
-  const { colors, roundness } = useTheme();
+  const { colors, roundness, dark } = useTheme();
   const c = colors as any;
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { id, title: initialTitle } = route?.params || {};
   const [title, setTitle] = useState(initialTitle || '');
   const [content, setContent] = useState('');
@@ -33,18 +36,47 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+  const [showToolbar, setShowToolbar] = useState(false);
 
-  // Автосохранение с debounce
-  const debouncedSave = useRef(
-    debounce((note: NoteData) => {
+  // Сохраняем заметку с задержкой
+  const debouncedSave = useCallback(
+    debounce(async (note: NoteData) => {
       setIsSaving(true);
       setSaveStatus('saving');
-      saveNoteLocal(note).then(() => {
-        setIsSaving(false);
-        setSaveStatus('saved');
-      });
-    }, 800)
-  ).current;
+      
+      // Загружаем текущую версию заметки для сравнения
+      const currentNote = await loadNoteLocal(note.id);
+      
+      // Проверяем, изменилась ли заметка фактически
+      const hasChanged = 
+        !currentNote || 
+        currentNote.title !== note.title || 
+        currentNote.content !== note.content;
+      
+      // Если заметка изменилась, обновляем таймстемп
+      let noteToSave;
+      if (hasChanged) {
+        const timestamp = Date.now();
+        noteToSave = {
+          ...note,
+          timestamp
+        };
+        // Отправляем событие обновления заметки
+        notesEventBus.emit('noteUpdated', { id: note.id, timestamp });
+      } else {
+        // Если нет изменений, сохраняем с тем же таймстемпом
+        noteToSave = {
+          ...note,
+          timestamp: currentNote?.timestamp || Date.now()
+        };
+      }
+      
+      await saveNoteLocal(noteToSave);
+      setIsSaving(false);
+      setSaveStatus('saved');
+    }, 500),
+    []
+  );
 
   // Загрузка заметки при открытии
   useEffect(() => {
@@ -53,15 +85,27 @@ export default function NoteEditorScreen({ route, navigation }) {
         if (note) {
           setTitle(note.title);
           setContent(note.content);
+          // Устанавливаем начальные значения для отслеживания изменений
+          isFirstLoad.current = true;
         }
       });
     }
     // eslint-disable-next-line
   }, [id]);
 
+  // Обновляем заметку только при фактическом изменении
   useEffect(() => {
     if (!id) return;
+    
+    // Если это первая загрузка, просто сохраняем без обновления таймстемпа
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
+    
+    // Сохраняем заметку с новым таймстемпом
     debouncedSave({ id, title, content });
+    
     // eslint-disable-next-line
   }, [title, content, id]);
 
@@ -120,67 +164,169 @@ export default function NoteEditorScreen({ route, navigation }) {
   }, [content]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.background }}>
-      <Appbar.Header style={{ backgroundColor: c.background, elevation: 0 }}>
-        <Appbar.BackAction color={c.primary} onPress={() => navigation.goBack()} />
-        <Appbar.Content title={<Text style={{ color: c.text, fontWeight: 'bold', fontSize: 22 }}>{title || t('edit_note', 'Редактирование заметки')}</Text>} />
-      </Appbar.Header>
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: c.background }]} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
+      <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <IconButton icon="chevron-left" size={24} iconColor={c.primary} />
+          <Text style={[styles.backText, { color: c.primary }]}>{t('notes', 'Заметки')}</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
+            <IconButton icon={showToolbar ? "format-text" : "format-color-text"} size={20} iconColor={c.primary} />
+          </TouchableOpacity>
+          
+          <Text style={[styles.saveStatus, { color: saveStatus === 'saving' ? c.placeholder : '#4caf50' }]}>
+            {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Content */}
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer} 
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Title Input - iOS style with no visible label */}
         <TextInput
-          label={t('note_title', 'Заголовок')}
+          placeholder={t('note_title', 'Заголовок')}
           value={title}
           onChangeText={setTitle}
           mode="flat"
-          style={[styles.titleInput, { backgroundColor: c.background, color: c.text, borderRadius: roundness, fontWeight: 'bold', fontSize: 28 }]}
-          underlineColor={c.primary}
+          style={[styles.titleInput, { backgroundColor: 'transparent', color: c.text }]}
+          underlineColor="transparent"
           placeholderTextColor={c.placeholder}
           theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
         />
+        
+        {/* Small date indicator - iOS style */}
+        <Text style={[styles.dateText, { color: c.placeholder }]}>
+          {new Date().toLocaleDateString()} · {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </Text>
+        
+        {/* Editor */}
         <RichEditor
           ref={richText}
           initialContentHTML={content}
           onChange={setContent}
-          style={{ minHeight: 200, borderWidth: 1, borderColor: c.border, borderRadius: roundness, marginBottom: 16, backgroundColor: c.surface }}
+          style={styles.editor}
           placeholder={t('note_text_placeholder', 'Текст заметки...')}
-          editorStyle={{ color: c.text, backgroundColor: c.surface }}
+          editorStyle={{
+            color: c.text,
+            backgroundColor: 'transparent',
+            cssText: `body { 
+              padding: 0; 
+              line-height: 1.5; 
+              font-family: ${Platform.OS === 'ios' ? 'System' : 'sans-serif'};
+              font-size: 16px;
+            }`
+          }}
+          onTouchStart={() => setShowToolbar(true)}
         />
       </ScrollView>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-      >
-        <RichToolbar
-          editor={richText}
-          actions={[
-            actions.setBold,
-            actions.setItalic,
-            actions.setUnderline,
-            actions.setStrikethrough,
-            actions.insertBulletsList,
-            actions.blockquote,
-            actions.checkboxList,
-            actions.code,
-          ]}
-          style={{ backgroundColor: c.background, borderTopWidth: 1, borderColor: c.border, paddingBottom: 4, paddingTop: 4 }}
-          iconTint={c.primary}
-          selectedIconTint={c.primary}
-        />
-      </KeyboardAvoidingView>
-      <View style={{ alignItems: 'center', padding: 4 }}>
-        <Text style={{ color: saveStatus === 'saving' ? c.placeholder : '#4caf50', fontSize: 12 }}>
-          {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
-        </Text>
-      </View>
-    </View>
+      
+      {/* Toolbar */}
+      {showToolbar && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <Surface style={[styles.toolbarContainer, { backgroundColor: dark ? '#1C1C1E' : '#F2F2F7', borderTopColor: c.border }]}>
+            <RichToolbar
+              editor={richText}
+              actions={[
+                actions.setBold,
+                actions.setItalic,
+                actions.setUnderline,
+                actions.insertBulletsList,
+                actions.insertOrderedList,
+                actions.checkboxList,
+                actions.blockquote,
+                actions.code,
+                actions.undo,
+                actions.redo
+              ]}
+              style={styles.toolbar}
+              iconTint={c.primary}
+              selectedIconTint={c.accent}
+              disabledIconTint={c.disabled}
+              iconSize={20}
+            />
+          </Surface>
+        </KeyboardAvoidingView>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderBottomWidth: 0
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backText: {
+    fontSize: 16,
+    marginLeft: -8,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  saveStatus: {
+    fontSize: 12,
+    marginRight: 8,
+  },
+  contentContainer: {
     padding: 16,
+    paddingTop: 8,
+    flexGrow: 1,
   },
   titleInput: {
-    marginBottom: 12,
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 0,
+    height: 50,
+  },
+  dateText: {
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  editor: {
+    minHeight: 200,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+  },
+  toolbarContainer: {
+    borderTopWidth: 0.5,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  toolbar: {
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    paddingVertical: 8,
   },
   formatBar: {
     flexDirection: 'row',
@@ -199,15 +345,5 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 8,
     minHeight: 60,
-  },
-  customToolbar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#181818',
-    borderTopWidth: 1,
-    borderColor: '#333',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, LayoutChangeEvent } from 'react-native';
-import { Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, Menu, Divider, Chip } from 'react-native-paper';
+import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, LayoutChangeEvent, ScrollView, Alert, Linking } from 'react-native';
+import { Icon, Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, Menu, Divider, Chip } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
@@ -335,26 +335,33 @@ const TasksScreen = () => {
       <Card style={[
         styles.taskCard,
         {
-          backgroundColor: colors.surface,
-          borderRadius: roundness,
-          shadowColor: c.text + '22',
+          backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF',
+          borderRadius: 12,
+          shadowColor: theme.dark ? '#000000' : '#000000',
+          shadowOpacity: theme.dark ? 0.3 : 0.08,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 2 },
           elevation: 2,
-          opacity: item.completed ? 0.5 : 1,
+          opacity: item.completed ? 0.6 : 1,
+          borderWidth: theme.dark ? 0.5 : 0,
+          borderColor: theme.dark ? '#38383A' : 'transparent',
         },
       ]}>
         <View style={styles.taskRow}>
-          <Checkbox
-            status={item.completed ? 'checked' : 'unchecked'}
-            onPress={() => handleToggleTask(item.id)}
-            color={PRIORITY_COLORS[item.priority]}
-          />
+          <View style={{ marginRight: 10 }}>
+            <Checkbox
+              status={item.completed ? 'checked' : 'unchecked'}
+              onPress={() => handleToggleTask(item.id)}
+              color={PRIORITY_COLORS[item.priority]}
+            />
+          </View>
           <View style={{ flex: 1 }}>
-            <View style={item.completed ? { opacity: 0.7 } : undefined}>
+            <View style={item.completed ? { opacity: 0.8 } : undefined}>
               <Text
                 style={[
                   styles.taskTitle,
                   {
-                    color: c.text,
+                    color: theme.dark ? '#FFFFFF' : '#000000',
                     textDecorationLine: item.completed ? 'line-through' : 'none',
                   },
                 ]}
@@ -362,16 +369,23 @@ const TasksScreen = () => {
                 {item.title}
               </Text>
               <View style={styles.taskMetaRow}>
-                <Text style={[styles.taskMeta, { color: c.placeholder }]}>{item.dueDate}</Text>
-                <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: 'bold' }]}>{PRIORITY_LABELS[item.priority]}</Text>
+                <Text style={[styles.taskMeta, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{item.dueDate}</Text>
+                <Text style={[styles.taskMeta, { color: PRIORITY_COLORS[item.priority], fontWeight: '500' }]}>{PRIORITY_LABELS[item.priority]}</Text>
+                {item.reminderTime && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Icon source="clock-outline" size={12} color={theme.dark ? '#8E8E93' : '#8E8E93'} />
+                    <Text style={{ fontSize: 12, color: theme.dark ? '#8E8E93' : '#8E8E93', marginLeft: 2 }}>{item.reminderTime}</Text>
+                  </View>
+                )}
                 {item.tags && item.tags.map(tag => (
                   <View key={tag} style={item.completed ? { opacity: 0.7 } : undefined}>
-                    <Text style={[styles.tag, { backgroundColor: c.chipBg, color: c.chipText, borderRadius: roundness }]}>{tag}</Text>
+                    <Text style={[styles.tag, { backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', color: theme.dark ? '#FFFFFF' : '#000000' }]}>{tag}</Text>
                   </View>
                 ))}
               </View>
             </View>
           </View>
+          <Icon source="chevron-right" size={20} color={theme.dark ? '#636366' : '#C7C7CC'} />
         </View>
       </Card>
     </Swipeable>
@@ -417,34 +431,67 @@ const TasksScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text variant="titleLarge" style={styles.header}>{t('daily_tasks')}</Text>
+      <View style={[styles.container, { backgroundColor: theme.dark ? '#000000' : '#F2F2F7' }]}>
+        <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
         {/* Выбор даты */}
         <View style={styles.dateRow}>
-          <Button
-            mode={formatDate(selectedDate) === formatDate(new Date()) ? 'contained' : 'outlined'}
+          <TouchableOpacity
             onPress={() => setSelectedDate(new Date())}
-            style={styles.dateButton}
-            textColor={
-              formatDate(selectedDate) === formatDate(new Date())
-                ? '#fff'
-                : undefined
-            }
+            style={[
+              styles.dateButton,
+              {
+                backgroundColor: formatDate(selectedDate) === formatDate(new Date()) 
+                  ? '#8a44da' 
+                  : Platform.OS === 'ios' 
+                    ? theme.dark ? '#2C2C2E' : '#F2F2F7'
+                    : colors.surface,
+                borderColor: formatDate(selectedDate) === formatDate(new Date())
+                  ? '#8a44da'
+                  : theme.dark ? '#3C3C3E' : '#E5E5EA',
+              }
+            ]}
           >
-            {t('today', 'Сегодня')}
-          </Button>
-          <Button
-            mode={formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? 'contained' : 'outlined'}
+            <Text style={[
+              styles.dateButtonText,
+              {
+                color: formatDate(selectedDate) === formatDate(new Date())
+                  ? '#fff'
+                  : '#8a44da',
+                fontWeight: formatDate(selectedDate) === formatDate(new Date()) ? '600' : '500',
+              }
+            ]}>
+              {t('today', 'Сегодня')}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
             onPress={() => setSelectedDate(addDays(new Date(), 1))}
-            style={styles.dateButton}
-            textColor={
-              formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
-                ? '#fff'
-                : undefined
-            }
+            style={[
+              styles.dateButton,
+              {
+                backgroundColor: formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) 
+                  ? '#8a44da' 
+                  : Platform.OS === 'ios'
+                    ? theme.dark ? '#2C2C2E' : '#F2F2F7'
+                    : colors.surface,
+                borderColor: formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
+                  ? '#8a44da'
+                  : theme.dark ? '#3C3C3E' : '#E5E5EA',
+              }
+            ]}
           >
-            {t('tomorrow', 'Завтра')}
-          </Button>
+            <Text style={[
+              styles.dateButtonText,
+              {
+                color: formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
+                  ? '#fff'
+                  : '#8a44da',
+                fontWeight: formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? '600' : '500',
+              }
+            ]}>
+              {t('tomorrow', 'Завтра')}
+            </Text>
+          </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <DateTimePicker
               value={selectedDate}
@@ -469,13 +516,13 @@ const TasksScreen = () => {
         {filteredTasks.length > 0 && (
           <View style={styles.progressContainer}>
             <View
-              style={[styles.progressBar, { backgroundColor: c.divider, overflow: 'hidden' }]}
+              style={[styles.progressBar, { backgroundColor: theme.dark ? '#38383A' : '#E5E5EA', overflow: 'hidden' }]}
               onLayout={(e: LayoutChangeEvent) => setBarWidth(e.nativeEvent.layout.width)}
             >
               <LinearGradient
-                colors={['#7745dc', '#f34f8c']}
+                colors={['#007AFF', '#34C759']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
               />
               {barWidth > 0 && (
@@ -489,25 +536,34 @@ const TasksScreen = () => {
                       inputRange: [0, 1],
                       outputRange: [barWidth, 0],
                     }),
-                    backgroundColor: c.divider,
+                    backgroundColor: theme.dark ? '#38383A' : '#E5E5EA',
                   }}
                 />
               )}
             </View>
-            <Text style={styles.progressText}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
+            <Text style={[styles.progressText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
           </View>
         )}
-        <View style={styles.inputRow}>
-          <TextInput
-            ref={inputRef}
-            value={newTask}
-            onChangeText={setNewTask}
-            placeholder={t('add_task_placeholder', 'Новая задача...')}
-            style={[styles.input, { backgroundColor: colors.surface, color: c.text, borderRadius: roundness, borderColor: c.divider }]}
-            placeholderTextColor={c.placeholder}
-            onFocus={handleInputFocus}
-            onBlur={() => {}}
-          />
+        <View style={styles.inputContainer}>
+          <View style={styles.inputRow}>
+            <TextInput
+              ref={inputRef}
+              value={newTask}
+              onChangeText={setNewTask}
+              placeholder={t('add_task_placeholder', 'Новая задача...')}
+              style={[
+                styles.input, 
+                { 
+                  backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF',
+                  color: theme.dark ? '#FFFFFF' : '#000000',
+                  borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA'
+                }
+              ]}
+              placeholderTextColor={theme.dark ? '#636366' : '#C7C7CC'}
+              onFocus={handleInputFocus}
+              onBlur={() => {}}
+            />
+          </View>
         </View>
         {/* Блок создания заметки только при isInputFocused */}
         {isInputFocused && (
@@ -526,12 +582,12 @@ const TasksScreen = () => {
               elevation: 6,
             }}
           >
-            <View style={[styles.iosBlock, { backgroundColor: colors.surface, borderRadius: roundness * 1.5, shadowColor: c.text + '18' }]}> 
+            <View style={[styles.iosBlock, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 16, shadowColor: theme.dark ? '#000000' : '#000000' }]}>
               {/* Одна строка: дата слева, время справа */}
               <View style={styles.iosRowHorizontal}>
                 {/* Левая часть — дата */}
                 <View style={styles.iosCol}>
-                  <Text style={[styles.iosLabel, { color: c.text }]}>{t('date', 'Дата')}</Text>
+                  <Text style={[styles.iosLabel, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('date', 'Дата')}</Text>
                   <DateTimePicker
                     value={newTaskDate}
                     mode="date"
@@ -545,7 +601,7 @@ const TasksScreen = () => {
                 </View>
                 {/* Правая часть — время */}
                 <View style={styles.iosCol}>
-                  <Text style={[styles.iosLabel, { color: c.text }]}>{t('time', 'Время')}</Text>
+                  <Text style={[styles.iosLabel, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('time', 'Время')}</Text>
                   <DateTimePicker
                     value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : newTaskDate}
                     mode="time"
@@ -564,13 +620,13 @@ const TasksScreen = () => {
                 </View>
               </View>
               {/* Остальные элементы блока (приоритет, повтор, переключатель, +Добавить) идут ниже, с отступами */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 }}>
                 <Text style={[styles.iosMeta, { color: PRIORITY_COLORS[priority] }]}>{PRIORITY_LABELS[priority]}</Text>
-                <Text style={[styles.iosMeta, { color: c.text }]}>{REPEAT_LABELS[repeatInterval]}</Text>
+                <Text style={[styles.iosMeta, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{REPEAT_LABELS[repeatInterval]}</Text>
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                 <TouchableOpacity
-                  style={[styles.iosButton, { flex: 1, marginRight: 8, backgroundColor: colors.background, borderColor: c.divider, borderRadius: roundness }]}
+                  style={[styles.iosButton, { flex: 1, marginRight: 8, backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
                   onPress={() => {
                     if (Platform.OS === 'ios') {
                       ActionSheetIOS.showActionSheetWithOptions({
@@ -587,10 +643,10 @@ const TasksScreen = () => {
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: c.text }]}>{t('priority', 'Приоритет')}</Text>
+                  <Text style={[styles.iosButtonText, { color: '#007AFF' }]}>{t('priority', 'Приоритет')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.iosButton, { flex: 1, backgroundColor: colors.background, borderColor: c.divider, borderRadius: roundness }]}
+                  style={[styles.iosButton, { flex: 1, backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
                   onPress={() => {
                     if (Platform.OS === 'ios') {
                       ActionSheetIOS.showActionSheetWithOptions({
@@ -609,16 +665,17 @@ const TasksScreen = () => {
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: c.text }]}>{t('repeat', 'Повторять')}</Text>
+                  <Text style={[styles.iosButtonText, { color: '#007AFF' }]}>{t('repeat', 'Повторять')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ flex: 1, color: c.text }}>{t('send_notification', 'Отправить уведомление')}</Text>
+                <Text style={{ flex: 1, color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 16 }}>{t('send_notification', 'Отправить уведомление')}</Text>
                 <Switch
                   value={sendNotification}
                   onValueChange={setSendNotification}
-                  thumbColor={sendNotification ? colors.primary : c.divider}
-                  trackColor={{ true: colors.primary + '55', false: c.divider }}
+                  thumbColor={sendNotification ? '#FFFFFF' : '#FFFFFF'}
+                  trackColor={{ true: '#34C759', false: theme.dark ? '#636366' : '#E5E5EA' }}
+                  ios_backgroundColor={theme.dark ? '#636366' : '#E5E5EA'}
                 />
               </View>
               {/* Две кнопки внизу: Отмена и Добавить */}
@@ -630,16 +687,16 @@ const TasksScreen = () => {
                     setNewTask('');
                     if (inputRef.current) inputRef.current.blur();
                   }}
-                  style={[styles.iosCancelBtn, { borderColor: colors.primary, borderRadius: roundness }]}
-                  textColor={colors.primary}
+                  style={[styles.iosCancelBtn, { borderColor: '#007AFF', borderRadius: 10 }]}
+                  textColor="#007AFF"
                 >
                   {t('cancel', 'Отмена')}
                 </Button>
                 <LinearGradient
-                  colors={['#7745dc', '#f34f8c']}
+                  colors={['#007AFF', '#34C759']}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.iosAddBtn, { borderRadius: roundness }]}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.iosAddBtn, { borderRadius: 10 }]}
                 >
                   <Button
                     mode="contained"
@@ -659,28 +716,28 @@ const TasksScreen = () => {
             {/* Модальные окна для Android (если нужно) */}
             <Modal visible={showPriorityModal} transparent animationType="fade" onRequestClose={() => setShowPriorityModal(false)}>
               <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: roundness }]}> 
+                <View style={[styles.modalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 14 }]}>
                   {(['low', 'medium', 'high'] as const).map((p) => (
                     <TouchableOpacity key={p} onPress={() => { setPriority(p); setShowPriorityModal(false); }} style={styles.modalOption}>
-                      <Text style={{ color: c.text, fontSize: 18 }}>{PRIORITY_LABELS[p]}</Text>
+                      <Text style={{ color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 17, fontWeight: '400' }}>{PRIORITY_LABELS[p]}</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity onPress={() => setShowPriorityModal(false)} style={styles.modalOption}>
-                    <Text style={{ color: c.error, fontSize: 18 }}>{t('cancel', 'Отмена')}</Text>
+                    <Text style={{ color: '#FF3B30', fontSize: 17, fontWeight: '600' }}>{t('cancel', 'Отмена')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </Modal>
             <Modal visible={showRepeatModal} transparent animationType="fade" onRequestClose={() => setShowRepeatModal(false)}>
               <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: roundness }]}> 
+                <View style={[styles.modalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 14 }]}>
                   {(['none', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((interval) => (
                     <TouchableOpacity key={interval} onPress={() => { setRepeatInterval(interval as any); setShowRepeatModal(false); }} style={styles.modalOption}>
-                      <Text style={{ color: c.text, fontSize: 18 }}>{REPEAT_LABELS[interval]}</Text>
+                      <Text style={{ color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 17, fontWeight: '400' }}>{REPEAT_LABELS[interval]}</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity onPress={() => setShowRepeatModal(false)} style={styles.modalOption}>
-                    <Text style={{ color: c.error, fontSize: 18 }}>{t('cancel', 'Отмена')}</Text>
+                    <Text style={{ color: '#FF3B30', fontSize: 17, fontWeight: '600' }}>{t('cancel', 'Отмена')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -693,7 +750,8 @@ const TasksScreen = () => {
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <Divider style={[styles.divider, { backgroundColor: c.divider }]} />}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </KeyboardAvoidingView>
@@ -703,27 +761,43 @@ const TasksScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 4,
+    paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
   header: {
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 16,
-    paddingTop: 10,
+    paddingTop: 12,
     textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  inputContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    backgroundColor: 'transparent',
+    marginBottom: 4,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    width: '100%',
   },
   input: {
     flex: 1,
     marginRight: 8,
-    fontSize: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 3, /* высота поля ввода */
+    fontSize: 17,
+    height: 44,
     borderWidth: 0,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    backgroundColor: '#F2F2F7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
   addBtn: {
@@ -733,36 +807,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 2,
   },
+
   divider: {
     height: 0,
     marginVertical: 4,
   },
   listContent: {
     paddingBottom: 32,
+    paddingTop: 8,
   },
   taskCard: {
-    marginBottom: 8,
+    marginVertical: 6,
+    marginHorizontal: 2,
     elevation: 2,
     padding: 0,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 14,
+    borderRadius: 12,
   },
   taskTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   taskMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 2,
   },
   taskMeta: {
     fontSize: 13,
     marginRight: 8,
+    color: '#8E8E93',
+    fontWeight: '400',
   },
   tag: {
     fontSize: 12,
@@ -770,15 +859,39 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     marginLeft: 4,
     marginRight: 0,
-    fontWeight: 'bold',
+    fontWeight: '500',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    marginTop: 8,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 4,
   },
   dateButton: {
-    marginRight: 8,
+    marginRight: 10,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    minWidth: 100,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  dateButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
   calendarButton: {
     marginRight: 8,
@@ -792,15 +905,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   progressBar: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
   },
   progressText: {
     textAlign: 'right',
-    color: '#888',
+    color: '#8E8E93',
     fontSize: 12,
-    marginTop: 1,
+    marginTop: 4,
     marginBottom: 2,
+    fontWeight: '400',
   },
   optionsRow: {
     marginBottom: 8,
@@ -823,15 +938,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   iosBlock: {
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: '#F2F2F7',
     padding: 16,
     marginBottom: 12,
     shadowColor: '#222',
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+    elevation: 4,
   },
   iosRowHorizontal: {
     flexDirection: 'row',
@@ -850,6 +965,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
     textAlign: 'left',
+    color: '#000000',
+    marginBottom: 6,
+    letterSpacing: -0.2,
   },
   iosPickerWrap: {
     flex: 1,
@@ -861,70 +979,82 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: '#F2F2F7',
     marginBottom: 2,
     marginTop: 2,
+    borderWidth: 0.5,
+    borderColor: '#E5E5EA',
   },
   iosPickerValue: {
     fontSize: 16,
     fontWeight: '500',
     marginRight: 4,
+    color: '#007AFF',
+    letterSpacing: -0.2,
   },
   iosInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: '#E5E5EA',
     marginBottom: 0,
     minHeight: 40,
     justifyContent: 'center',
+    backgroundColor: '#F2F2F7',
   },
   iosInputText: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#000000',
+    letterSpacing: -0.2,
   },
   iosMeta: {
     fontSize: 13,
     fontWeight: '500',
     opacity: 0.8,
+    color: '#8E8E93',
+    letterSpacing: -0.1,
   },
   iosButton: {
     backgroundColor: '#F2F2F7',
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: '#E5E5EA',
     marginBottom: 0,
   },
   iosButtonText: {
-    color: '#222',
+    color: '#007AFF',
     fontSize: 16,
     fontWeight: '500',
+    letterSpacing: -0.2,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     padding: 16,
-    minWidth: 240,
+    minWidth: 270,
     alignItems: 'stretch',
   },
   modalOption: {
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E5EA',
   },
   iosButtonRow: {
     flexDirection: 'row',
@@ -932,32 +1062,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     gap: 12,
+    marginHorizontal: 4,
   },
   iosCancelBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     marginRight: 8,
-    borderWidth: 1.5,
+    borderWidth: 0.5,
+    borderColor: '#007AFF',
   },
   iosAddBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     marginLeft: 8,
+    backgroundColor: '#007AFF',
   },
   swipeDeleteButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#FF3B30',
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    height: '80%',
+    height: '100%',
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
-    marginTop: 3,
   },
   swipeDeleteText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
 

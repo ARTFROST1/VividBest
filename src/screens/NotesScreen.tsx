@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar } from 'react-native';
 import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,7 @@ interface NoteItem {
   status?: NoteStatus; // только для заметок
   children?: NoteItem[];
   content?: string; // добавлено для хранения содержимого заметки
+  timestamp?: number; // время создания/изменения заметки в миллисекундах
 }
 
 const initialNotes: NoteItem[] = [];
@@ -145,23 +146,48 @@ const NotesScreen = () => {
   };
 
   useEffect(() => {
-    // Загрузка при первом рендере
     loadAllNotes();
 
-    // Подписка на сброс
-    const resetHandler = () => {
-      setNotes([]);
-      setActiveSidebarFilter(null);
+    // Подписка на события
+    const handlers = {
+      reset: () => {
+        loadAllNotes();
+      },
+      noteUpdated: ({ id, timestamp }: { id: string; timestamp: number }) => {
+        setNotes(prev => {
+          // Рекурсивно обновляем таймстемп заметки
+          function updateNoteTimestamp(items: NoteItem[]): NoteItem[] {
+            return items.map(item => {
+              if (item.id === id) {
+                return { ...item, timestamp };
+              }
+              if (item.children) {
+                return { ...item, children: updateNoteTimestamp(item.children) };
+              }
+              return item;
+            });
+          }
+          return updateNoteTimestamp(prev);
+        });
+      }
     };
-    notesEventBus.on('reset', resetHandler);
 
+    notesEventBus.on('reset', handlers.reset);
+    notesEventBus.on('noteUpdated', handlers.noteUpdated);
+
+    return () => {
+      notesEventBus.off('reset', handlers.reset);
+      notesEventBus.off('noteUpdated', handlers.noteUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
     // Подписка на фокус (возврат с экрана NoteEditor)
     const focusUnsubscribe = navigation.addListener('focus', () => {
       loadAllNotes(); // Перезагружаем все данные при фокусе
     });
 
     return () => {
-      notesEventBus.off('reset', resetHandler);
       focusUnsubscribe();
     };
   }, [navigation]); // Зависимость только от navigation
@@ -218,45 +244,52 @@ const NotesScreen = () => {
   // handleAdd: разрешаем создавать папки в корне, если выбран 'Корень'
   const handleAdd = () => {
     if (!newTitle.trim()) return;
-    // Запрет на создание папки в папке второго уровня и глубже
-    if (isFolder && activeFolderLevel >= 2) {
-      alert('В этой папке нельзя создавать папки.');
-      return;
-    }
+    
+    const currentTimestamp = Date.now();
+    const newId = Math.random().toString(36).substring(2, 11);
     const newItem: NoteItem = {
-      id: Date.now().toString(),
-      title: newTitle,
-      isFolder,
+      id: newId,
+      title: newTitle.trim(),
+      isFolder: isFolder,
       pinned: false,
+      status: isFolder ? undefined : 'todo',
       children: isFolder ? [] : undefined,
-      content: isFolder ? undefined : '', // для заметок создаём пустое содержимое
+      timestamp: isFolder ? undefined : currentTimestamp, // Добавляем таймстемп только для заметок, не для папок
     };
-    if (activeSidebarFilter) {
-      function addToFolder(items: NoteItem[]): NoteItem[] {
-        return items.map(item => {
-          if (item.id === activeSidebarFilter && item.isFolder) {
-            return {
-              ...item,
-              children: item.children ? [...item.children, newItem] : [newItem],
-            };
-          }
-          if (item.children) {
-            return { ...item, children: addToFolder(item.children) };
-          }
-          return item;
-        });
+    
+    setNotes(prev => {
+      // Если выбрана папка в сайдбаре, добавляем в неё
+      if (activeSidebarFilter && activeSidebarFilter !== 'fav') {
+        function addToFolder(items: NoteItem[]): NoteItem[] {
+          return items.map(item => {
+            if (item.id === activeSidebarFilter && item.isFolder) {
+              return {
+                ...item,
+                children: [...(item.children || []), newItem],
+              };
+            }
+            if (item.children) {
+              return { ...item, children: addToFolder(item.children) };
+            }
+            return item;
+          });
+        }
+        return addToFolder(prev);
       }
-      setNotes(prev => addToFolder(prev));
-      // Если это новая папка первого уровня — делаем её активной
-      if (isFolder && activeFolderLevel === 1) setActiveSidebarFilter(newItem.id);
-    } else {
-      setNotes(prev => [...prev, newItem]);
-      // Если это первая папка — делаем её активной
-      if (isFolder) setActiveSidebarFilter(newItem.id);
-    }
+      // Иначе добавляем в корень
+      return [...prev, newItem];
+    });
+    
     setShowDialog(false);
     setNewTitle('');
-    setIsFolder(false);
+    // Сбрасываем выбор источника перемещения
+    setMoveSource(null);
+    
+    // Если создали заметку, открываем её в редакторе
+    if (!isFolder) {
+      // @ts-ignore
+      navigation.navigate('NoteEditor', { id: newId, title: newTitle.trim() });
+    }
   };
 
   // Удаление (рекурсивно)
@@ -451,6 +484,59 @@ const NotesScreen = () => {
     return items;
   }
 
+  // Функция для группировки заметок по времени
+  function groupNotesByTime(notes: NoteItem[]) {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const todayTimestamp = today.getTime();
+    const yesterdayTimestamp = yesterday.getTime();
+    const thirtyDaysAgoTimestamp = thirtyDaysAgo.getTime();
+    
+    // Группируем заметки по времени на основе реальных таймстемпов
+    return {
+      today: notes.filter(note => {
+        // Если у заметки нет таймстемпа, добавляем её в сегодняшние
+        if (!note.timestamp) return true;
+        return note.timestamp >= todayTimestamp;
+      }),
+      yesterday: notes.filter(note => {
+        if (!note.timestamp) return false;
+        return note.timestamp >= yesterdayTimestamp && note.timestamp < todayTimestamp;
+      }),
+      previous30Days: notes.filter(note => {
+        if (!note.timestamp) return false;
+        return note.timestamp >= thirtyDaysAgoTimestamp && note.timestamp < yesterdayTimestamp;
+      })
+    };
+  }
+
+  // Форматирование времени для заметки (например, "13:21")
+  function formatNoteTime(note: NoteItem) {
+    // Если у заметки нет таймстемпа, используем текущее время
+    const timestamp = note.timestamp || Date.now();
+    const date = new Date(timestamp);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
+  // Функция сортировки заметок по времени (новые сверху)
+  function sortNotesByTimestamp(notes: NoteItem[]): NoteItem[] {
+    return [...notes].sort((a, b) => {
+      const timestampA = a.timestamp || 0;
+      const timestampB = b.timestamp || 0;
+      return timestampB - timestampA; // Сортировка по убыванию (новые сверху)
+    });
+  }
+
   // Рендер списка заметок (минималистичный, как в макете)
   function renderNotesList(items: NoteItem[]) {
     // Только заметки (не папки)
@@ -458,54 +544,99 @@ const NotesScreen = () => {
     if (notes.length === 0) {
       return <Text style={[styles.emptyText, { color: c.placeholder }]}>{t('no_notes', 'Нет заметок')}</Text>;
     }
-    return notes.map(note => (
+    
+    // Группируем заметки по времени
+    const groupedNotes = groupNotesByTime(notes);
+    
+    // Сортируем заметки в каждой группе по времени (новые сверху)
+    const sortedToday = sortNotesByTimestamp(groupedNotes.today);
+    const sortedYesterday = sortNotesByTimestamp(groupedNotes.yesterday);
+    const sortedPrevious30Days = sortNotesByTimestamp(groupedNotes.previous30Days);
+    
+    return (
+      <>
+        {/* Сегодня */}
+        {sortedToday.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('today', 'Today')}</Text>
+            {sortedToday.map(note => renderNoteItem(note))}
+          </>
+        )}
+        
+        {/* Вчера */}
+        {sortedYesterday.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('yesterday', 'Yesterday')}</Text>
+            {sortedYesterday.map(note => renderNoteItem(note))}
+          </>
+        )}
+        
+        {/* Предыдущие 30 дней */}
+        {sortedPrevious30Days.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('previous_30_days', 'Previous 30 Days')}</Text>
+            {sortedPrevious30Days.map(note => renderNoteItem(note))}
+          </>
+        )}
+      </>
+    );
+  }
+  
+  // Рендер отдельной заметки
+  function renderNoteItem(note: NoteItem) {
+    return (
       <Swipeable
         key={note.id}
         renderRightActions={() => (
-          <LinearGradient
-            colors={['#f44336', '#f44336']}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
-              justifyContent: 'center',
-              alignItems: 'center',
-              width: 80,
-              height: '80%',
-              borderTopRightRadius: 12,
-              borderBottomRightRadius: 12,
-              marginTop: 3,
-            }}
-          >
+          <View style={styles.swipeActionContainer}>
             <TouchableOpacity
-              style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+              style={styles.swipeDeleteButton}
               onPress={() => handleSidebarDelete(note.id, false)}
               activeOpacity={0.7}
             >
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 17 }}>{t('delete', 'Удалить')}</Text>
+              <IconButton icon="trash-can-outline" size={22} iconColor="#FFFFFF" style={styles.swipeActionIcon} />
+              <Text style={styles.swipeActionText}>{t('delete', 'Delete')}</Text>
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         )}
         overshootRight={false}
+        friction={2}
       >
-        <Card style={[styles.noteCard, { backgroundColor: c.surface, borderRadius: roundness, shadowColor: c.text + '22', elevation: 2 }]}> 
+        <View style={styles.noteCardContainer}>
           <TouchableOpacity
-            style={{ paddingVertical: 14, paddingHorizontal: 16 }}
+            style={styles.noteCardContent}
             onPress={() => {
               // @ts-ignore
               navigation.navigate('NoteEditor', { id: note.id, title: note.title });
             }}
             onLongPress={() => handleSidebarRename(note.id, false)}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.noteTitle, { color: c.text }]} numberOfLines={1}>{note.title}</Text>
-            <Text style={[styles.noteSubtitle, { color: c.placeholder }]} numberOfLines={1}>
-              {note.content
-                ? note.content.replace(/<[^>]+>/g, '').replace(/\n/g, ' ').slice(0, 80) + (note.content.replace(/<[^>]+>/g, '').length > 80 ? '…' : '')
-                : t('note_preview_placeholder', 'Нет текста')}
-            </Text>
+            <View style={styles.noteContentWrapper}>
+              <Text style={styles.noteTitle} numberOfLines={1}>
+                {note.title}{note.pinned && <Text style={styles.pinnedIndicator}> 📌</Text>}
+              </Text>
+              <View style={styles.notePreviewContainer}>
+                <Text style={styles.noteTime}>{formatNoteTime(note)}</Text>
+                <Text style={styles.noteSubtitle} numberOfLines={1}>
+                  {note.content
+                    ? note.content.replace(/<[^>]+>/g, '').replace(/\n/g, ' ').slice(0, 80) + (note.content.replace(/<[^>]+>/g, '').length > 80 ? '…' : '')
+                    : t('note_preview_placeholder', 'No text')}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.noteAccessoryContainer}>
+              <IconButton 
+                icon="chevron-right" 
+                iconColor="#C7C7CC" 
+                size={20} 
+                style={styles.noteAccessoryIcon} 
+              />
+            </View>
           </TouchableOpacity>
-        </Card>
+        </View>
       </Swipeable>
-    ));
+    );
   }
 
   // Проверка: есть ли хотя бы одна папка в корне
@@ -592,7 +723,12 @@ const NotesScreen = () => {
     function rename(items: NoteItem[]): NoteItem[] {
       return items.map(item => {
         if (item.id === renameDialog.id) {
-          return { ...item, title: renameValue };
+          // Если это заметка (не папка), обновляем таймстемп
+          if (!renameDialog.isFolder) {
+            return { ...item, title: renameValue, timestamp: Date.now() };
+          } else {
+            return { ...item, title: renameValue };
+          }
         }
         if (item.children) {
           return { ...item, children: rename(item.children) };
@@ -607,11 +743,16 @@ const NotesScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
-      {/* AppBar с кнопкой-гамбургером */}
-      <Appbar.Header style={{ backgroundColor: c.background, elevation: 0 }}>
-        <Appbar.Action icon="menu" color={c.primary} onPress={() => setSidebarVisible(true)} />
-        <Appbar.Content title={<Text style={{ color: c.text, fontWeight: 'bold', fontSize: 28, letterSpacing: 0.5 }}>Notes</Text>} />
-      </Appbar.Header>
+      {/* AppBar с iOS-стилем */}
+      <SafeAreaView style={{ backgroundColor: c.background }}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.headerButton}>
+            <Text style={[styles.headerButtonText, { color: c.primary }]}>{t('menu', 'Меню')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Notes</Text>
+          <View style={styles.headerButtonPlaceholder} />
+        </View>
+      </SafeAreaView>
       {/* Sidebar для web (открывается по кнопке) */}
       {isWeb && sidebarVisible && (
         <>
@@ -650,16 +791,15 @@ const NotesScreen = () => {
       )}
       {/* Основной контент */}
       <View style={[styles.notesMain, { backgroundColor: c.background, flex: 1 }]}>
-        {/* Поиск */}
+        {/* Поиск в стиле iOS */}
         <View style={styles.searchBlock}>
-          <Searchbar
-            placeholder={t('search_notes_placeholder', 'Поиск заметок...')}
+          <TextInput
+            placeholder={t('search_notes_placeholder', 'Поиск')}
             value={search}
             onChangeText={setSearch}
-            style={[styles.searchInput, { backgroundColor: c.surface, color: c.text, borderRadius: 100, borderColor: c.border }]}
-            inputStyle={{ color: c.text }}
-            iconColor={c.placeholder}
-            placeholderTextColor={c.placeholder}
+            style={styles.iosSearchField}
+            placeholderTextColor="#8E8E93"
+            clearButtonMode="while-editing"
           />
         </View>
         {/* Пустой экран, если нет папок */}
@@ -693,93 +833,92 @@ const NotesScreen = () => {
         <Portal>
           {showDialog && (
             <View style={styles.modalOverlayCustom}>
-              <View style={[styles.modalContentCustom, { backgroundColor: c.surface, borderRadius: roundness * 1.5, shadowColor: c.text + '18' }]}> 
-                <Text style={[styles.modalTitleCustom, { color: c.text }]}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Text>
+              <View style={styles.iosModalContent}> 
+                <Text style={styles.iosModalTitle}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Text>
                 <TextInput
-                  label={t('name', 'Название')}
+                  placeholder={t('name', 'Название')}
                   value={newTitle}
                   onChangeText={setNewTitle}
                   autoFocus
-                  style={[styles.modalInputCustom, { backgroundColor: c.background, color: c.text, borderRadius: roundness }]}
-                  placeholderTextColor={c.placeholder}
+                  style={styles.iosModalInput}
+                  placeholderTextColor="#8E8E93"
                 />
                 {createMode === 'both' && (
-                  <Button onPress={() => setIsFolder(f => !f)} style={{ marginTop: 8 }} textColor={c.primary}>
-                    {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать_как_папку')}
-                  </Button>
+                  <TouchableOpacity 
+                    onPress={() => setIsFolder(f => !f)} 
+                    style={styles.iosTypeToggle}
+                  >
+                    <Text style={styles.iosTypeToggleText}>
+                      {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
+                    </Text>
+                  </TouchableOpacity>
                 )}
                 {createMode === 'folder' && (
-                  <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
+                  <Text style={styles.iosModalHint}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
                 )}
                 {createMode === 'note' && (
-                  <Text style={{ marginTop: 8, color: c.placeholder }}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
+                  <Text style={styles.iosModalHint}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
                 )}
-                <View style={styles.modalButtonRowCustom}>
-                  <Button
-                    mode="outlined"
+                <View style={styles.iosModalButtons}>
+                  <TouchableOpacity
                     onPress={() => setShowDialog(false)}
-                    style={[styles.modalCancelBtnCustom, { borderColor: c.primary, borderRadius: roundness }]}
-                    textColor={c.primary}
+                    style={styles.iosModalCancelButton}
                   >
-                    {t('cancel', 'Отмена')}
-                  </Button>
-                  <LinearGradient
-                    colors={['#7745dc', '#f34f8c']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.modalAddBtnCustom, { borderRadius: roundness }]}
+                    <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleAdd}
+                    style={styles.iosModalActionButton}
                   >
-                    <Button
-                      mode="contained"
-                      onPress={handleAdd}
-                      style={{ backgroundColor: 'transparent', elevation: 0 }}
-                      textColor={'#fff'}
-                    >
-                      {t('create', 'Создать')}
-                    </Button>
-                  </LinearGradient>
+                    <Text style={styles.iosModalActionText}>{t('create', 'Создать')}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
           )}
         </Portal>
-        {/* Диалог переименования */}
+        {/* Диалог переименования в стиле iOS */}
         <Portal>
-          <Dialog visible={!!renameDialog} onDismiss={() => setRenameDialog(null)} style={{ borderRadius: roundness, backgroundColor: c.surface }}>
-            <Dialog.Title style={{ color: c.text }}>{t('rename', 'Переименовать')}</Dialog.Title>
-            <Dialog.Content>
-              <TextInput
-                label={t('name', 'Название')}
-                value={renameValue}
-                onChangeText={setRenameValue}
-                autoFocus
-                style={{ backgroundColor: c.background, color: c.text, borderRadius: roundness }}
-                placeholderTextColor={c.placeholder}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setRenameDialog(null)} textColor={c.primary}>{t('cancel', 'Отмена')}</Button>
-              <Button onPress={handleRenameApply} textColor={c.primary}>{t('save', 'Сохранить')}</Button>
-            </Dialog.Actions>
-          </Dialog>
+          {!!renameDialog && (
+            <View style={styles.modalOverlayCustom}>
+              <View style={styles.iosModalContent}>
+                <Text style={styles.iosModalTitle}>{t('rename', 'Переименовать')}</Text>
+                <TextInput
+                  placeholder={t('name', 'Название')}
+                  value={renameValue}
+                  onChangeText={setRenameValue}
+                  autoFocus
+                  style={styles.iosModalInput}
+                  placeholderTextColor="#8E8E93"
+                />
+                <View style={styles.iosModalButtons}>
+                  <TouchableOpacity
+                    onPress={() => setRenameDialog(null)}
+                    style={styles.iosModalCancelButton}
+                  >
+                    <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleRenameApply}
+                    style={styles.iosModalActionButton}
+                  >
+                    <Text style={styles.iosModalActionText}>{t('save', 'Сохранить')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
         </Portal>
-        {/* Кнопка добавить — теперь абсолютно внизу */}
-        <LinearGradient
-          colors={['#7745dc', '#f34f8c']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.addNoteBtnFixed, { borderRadius: roundness }]}
+        {/* Кнопка добавить в стиле iOS */}
+        <TouchableOpacity 
+          style={styles.addButtonContainer}
+          onPress={() => openCreateDialog('main')}
+          activeOpacity={0.8}
         >
-          <Button
-            mode="contained"
-            style={{ backgroundColor: 'transparent', elevation: 0 }}
-            contentStyle={{ height: 48 }}
-            labelStyle={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}
-            onPress={() => openCreateDialog('main')}
-          >
-            + {t('New', 'Добавить')}
-          </Button>
-        </LinearGradient>
+          <View style={styles.addButton}>
+            <Text style={styles.addButtonText}>+</Text>
+          </View>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -788,6 +927,40 @@ const NotesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F2F2F7',
+  },
+  timeGroupHeader: {
+    fontSize: 23,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    color: '#000000',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#181818', // Using theme text color
+    letterSpacing: -0.5,
+  },
+  headerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  headerButtonText: {
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  headerButtonPlaceholder: {
+    width: 40,
   },
   notesMain: {
     flex: 1,
@@ -796,52 +969,105 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   searchBlock: {
-    paddingHorizontal: 9,
-    paddingTop: 0,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
-  searchInput: {
-    borderWidth: 1,
-    fontSize: 16,
-    elevation: 40,
+  iosSearchField: {
+    height: 36,
+    backgroundColor: '#E9E9EB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 17,
+    color: '#000000',
     width: '100%',
-    height: 50,
-    alignSelf: 'center',
-    borderRadius: 100,
-    paddingVertical: 0,
   },
   notesListBlock: {
     flex: 1,
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
     paddingTop: 0,
   },
-  noteCard: {
-    marginHorizontal: 0,
+  noteCardContainer: {
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    borderWidth: 0,
-    marginRight: 0,
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    marginHorizontal: 2,
+  },
+  noteCardContent: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  noteContentWrapper: {
+    flex: 1,
+    marginRight: 8,
   },
   noteTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 2,
+    fontWeight: '600',
+    fontSize: 17,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  pinnedIndicator: {
+    opacity: 0.8,
+  },
+  notePreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  noteTime: {
+    fontSize: 15,
+    color: '#8E8E93',
+    marginRight: 6,
+    fontWeight: '400',
   },
   noteSubtitle: {
-    fontSize: 14,
+    fontSize: 15,
+    color: '#8E8E93',
+    flex: 1,
+    fontWeight: '400',
   },
-  addNoteBtn: {
-    marginHorizontal: 24,
-    marginVertical: 18,
-    elevation: 2,
+  noteAccessoryContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
-  addNoteBtnFixed: {
+  noteAccessoryIcon: {
+    margin: 0,
+    padding: 0,
+  },
+  addButtonContainer: {
     position: 'absolute',
-    left: 24,
     right: 24,
     bottom: 24,
     elevation: 2,
+    zIndex: 100,
+  },
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#8a44da', // Using theme primary color
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '400',
+    marginTop: -4,
   },
   emptyText: {
     textAlign: 'center',
@@ -928,6 +1154,97 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     marginLeft: 8,
+  },
+  swipeActionContainer: {
+    flexDirection: 'row',
+    width: 90,
+    height: '100%',
+  },
+  swipeDeleteButton: {
+    backgroundColor: '#FF3B30',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  swipeActionIcon: {
+    margin: 0,
+    padding: 0,
+    marginBottom: -2,
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  iosModalContent: {
+    backgroundColor: '#FFFFFF', // Using theme surface color
+    borderRadius: 14,
+    padding: 20,
+    width: '90%',
+    maxWidth: 340,
+  },
+  iosModalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#181818', // Using theme text color
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  iosModalInput: {
+    height: 44,
+    backgroundColor: '#F5F6FA', // Using theme background color
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 17,
+    marginBottom: 16,
+    color: '#181818', // Using theme text color
+  },
+  iosTypeToggle: {
+    padding: 8,
+    marginBottom: 16,
+  },
+  iosTypeToggleText: {
+    fontSize: 15,
+    color: '#8a44da', // Using theme primary color
+    textAlign: 'center',
+  },
+  iosModalHint: {
+    fontSize: 13,
+    color: '#888', // Using theme placeholder color
+    marginBottom: 16,
+  },
+  iosModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 0.5,
+    borderTopColor: '#E0E0E0', // Using theme border color
+    marginHorizontal: -20,
+    marginBottom: -20,
+  },
+  iosModalCancelButton: {
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 0.5,
+    borderRightColor: '#E0E0E0', // Using theme border color
+  },
+  iosModalCancelText: {
+    color: '#8a44da', // Using theme primary color
+    fontSize: 17,
+    fontWeight: '400',
+  },
+  iosModalActionButton: {
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iosModalActionText: {
+    color: '#8a44da', // Using theme primary color
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
 

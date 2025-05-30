@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import BottomTabs from './BottomTabs';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import NoteEditorScreen from '../screens/NoteEditorScreen';
+import NotificationsSettingsScreen from '../screens/NotificationsSettingsScreen';
+import EditorSettingsScreen from '../screens/EditorSettingsScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthScreen from '../screens/AuthScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -64,6 +66,8 @@ const RootNavigator = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }} id={undefined}>
         <Stack.Screen name="MainTabs" component={BottomTabs} />
         <Stack.Screen name="NoteEditor" component={NoteEditorScreen} />
+        <Stack.Screen name="NotificationsSettings" component={NotificationsSettingsScreen} />
+        <Stack.Screen name="EditorSettings" component={EditorSettingsScreen} />
       </Stack.Navigator>
     </AuthContext.Provider>
   );
