@@ -520,7 +520,7 @@ const TasksScreen = () => {
               onLayout={(e: LayoutChangeEvent) => setBarWidth(e.nativeEvent.layout.width)}
             >
               <LinearGradient
-                colors={['#007AFF', '#34C759']}
+                colors={['#7745dc', '#f34f8c']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -643,7 +643,7 @@ const TasksScreen = () => {
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: '#007AFF' }]}>{t('priority', 'Приоритет')}</Text>
+                  <Text style={[styles.iosButtonText, { color: '#8a44da' }]}>{t('priority', 'Приоритет')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.iosButton, { flex: 1, backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
@@ -665,7 +665,7 @@ const TasksScreen = () => {
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: '#007AFF' }]}>{t('repeat', 'Повторять')}</Text>
+                  <Text style={[styles.iosButtonText, { color: '#8a44da' }]}>{t('repeat', 'Повторять')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -687,13 +687,13 @@ const TasksScreen = () => {
                     setNewTask('');
                     if (inputRef.current) inputRef.current.blur();
                   }}
-                  style={[styles.iosCancelBtn, { borderColor: '#007AFF', borderRadius: 10 }]}
-                  textColor="#007AFF"
+                  style={[styles.iosCancelBtn, { borderColor: '#8a44da', borderRadius: 10 }]}
+                  textColor="#8a44da"
                 >
                   {t('cancel', 'Отмена')}
                 </Button>
                 <LinearGradient
-                  colors={['#007AFF', '#34C759']}
+                  colors={['#7745dc', '#f34f8c']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={[styles.iosAddBtn, { borderRadius: 10 }]}
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginRight: 4,
-    color: '#007AFF',
+    color: '#8a44da',
     letterSpacing: -0.2,
   },
   iosInput: {
@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   iosButtonText: {
-    color: '#007AFF',
+    color: '#8a44da',
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: -0.2,
@@ -1069,13 +1069,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginRight: 8,
     borderWidth: 0.5,
-    borderColor: '#007AFF',
+    borderColor: '#8a44da',
   },
   iosAddBtn: {
     flex: 1,
     borderRadius: 10,
     marginLeft: 8,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#8a44da',
   },
   swipeDeleteButton: {
     backgroundColor: '#FF3B30',

@@ -337,7 +337,7 @@ const SettingsScreen = () => {
       <View style={styles.section}>
         <View style={styles.sectionItem}>
           <View style={styles.rowLeft}>
-            <Ionicons name="notifications" size={22} color="#007AFF" style={{ marginRight: 12 }} />
+            <Ionicons name="notifications" size={22} color="#8a44da" style={{ marginRight: 12 }} />
             <Text style={[styles.itemText, { color: c.text }]}>
               {t('notifications', 'Уведомления')}
             </Text>

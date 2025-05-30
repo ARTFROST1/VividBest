@@ -7,7 +7,7 @@ export const lightTheme = {
     primary: '#8a44da', // Акцентный Фиолетовый
     secondary: '#F7B801', // Акцентный жёлтый
     accent: '#F7B801', // Акцентный цвет для выделения элементов
-    background: '#F5F6FA', // Светлый фон
+    background: '#f3f2f8', // Светлый фон
     surface: '#FFFFFF',
     onSurface: '#181818',
     onBackground: '#181818',
