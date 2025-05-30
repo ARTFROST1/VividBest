@@ -1096,13 +1096,11 @@ const NotesScreen = () => {
       });
     }
     
-    // Обновляем заметки в state и сохраняем в AsyncStorage
-    setNotes(prev => {
-      const updated = rename(prev);
-      // Сохраняем обновленные заметки в AsyncStorage
-      AsyncStorage.setItem('notes', JSON.stringify(updated));
-      return updated;
-    });
+    // Обновляем заметки в state
+    const updated = rename(notes);
+    setNotes(updated);
+    // Сохраняем обновленные заметки в AsyncStorage
+    await AsyncStorage.setItem('notes', JSON.stringify(updated));
     
     // Если это заметка (не папка), обновляем её в AsyncStorage
     if (!renameDialog.isFolder) {

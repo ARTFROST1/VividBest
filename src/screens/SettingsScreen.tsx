@@ -214,7 +214,7 @@ const SettingsScreen = () => {
     },
     languageText: {
       fontSize: 14,
-      color: "c.placeholder",
+      color: c.placeholder,
     },
     languageTextActive: {
       fontWeight: 'bold',
