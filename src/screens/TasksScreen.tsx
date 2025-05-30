@@ -538,14 +538,14 @@ const TasksScreen = () => {
                     ]}
                     onPress={() => handleTabChange({ nativeEvent: { selectedSegmentIndex: index } })}
                   >
-                    {isSelected && (
+                    {isSelected ? (
                       <LinearGradient
                         colors={['#7745dc', '#f34f8c']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={[StyleSheet.absoluteFill, styles.selectedSegment]}
+                        style={[styles.selectedSegment, { position: 'absolute', width: '100%', height: '100%' }]}
                       />
-                    )}
+                    ) : null}
                     <Text
                       style={[
                         styles.segmentButtonText,
@@ -1035,12 +1035,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 1,
   },
   selectedSegment: {
-    borderRadius: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
+    borderRadius: 6,
   },
   leftSegment: {
     marginLeft: 0,
