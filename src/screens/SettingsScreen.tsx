@@ -164,18 +164,29 @@ const SettingsScreen = () => {
       marginTop: 8,
     },
     logoutButtonText: {
-      color: c.surface,
-      fontWeight: '600',
+      color: '#fff',
       fontSize: 16,
+      fontWeight: '500',
     },
-    resetButton: {
+    loginButton: {
       marginHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 10,
       alignItems: 'center',
-      marginTop: 12,
+      marginBottom: 8,
+    },
+    loginButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    resetButton: {
+      marginHorizontal: 16,
+      marginTop: 8,
+      paddingVertical: 12,
+      borderRadius: 10,
       borderWidth: 1,
-      backgroundColor: 'transparent',
+      alignItems: 'center',
     },
     dialogButton: {
       paddingHorizontal: 20,
@@ -237,7 +248,7 @@ const SettingsScreen = () => {
   const [font, setFont] = useState<'system' | 'monospace' | 'serif'>('system');
   const [fontSize, setFontSize] = useState(16);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
-  const { logout } = useAuth();
+  const { logout, setIsAuth } = useAuth();
   const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
   const [resetDialogVisible, setResetDialogVisible] = useState(false);
 
@@ -284,15 +295,50 @@ const SettingsScreen = () => {
   }, [language, sortOrder, notificationsSound, notificationsImportantOnly, dndStart, dndEnd, autosave, font, fontSize, showLineNumbers]);
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser({
-          email: data.user.email || '',
-          name: data.user.user_metadata?.name || '',
-        });
+    const fetchUser = async () => {
+      try {
+        // First try to get the current session
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        // If we have a session, use it to get the user
+        if (sessionData?.session) {
+          const { data } = await supabase.auth.getUser();
+          if (data?.user) {
+            console.log('User found:', data.user.email);
+            setUser({
+              email: data.user.email || '',
+              name: data.user.user_metadata?.name || '',
+            });
+          }
+        } else {
+          console.log('No active session found');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        setUser(null);
       }
-    })();
+    };
+
+    fetchUser();
+
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        console.log('Auth state changed, user:', session.user.email);
+        setUser({
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name || '',
+        });
+      } else {
+        console.log('Auth state changed, no user');
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleResetAll = async () => {
@@ -435,30 +481,96 @@ const SettingsScreen = () => {
           />
         </View>
       </View>
-      
+
+      <Text style={styles.sectionTitle}>{t('application', 'Аккаунт')}</Text>
       {/* Account Section */}
-      {user && (
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('account', 'Аккаунт')}</Text>
-          <View style={styles.userInfo}>
-            <Text style={[styles.userEmail, { color: c.text }]}>{user.email}</Text>
-            {user.name && <Text style={[styles.userName, { color: c.text }]}>{user.name}</Text>}
-          </View>
-          <TouchableOpacity 
-            style={[styles.logoutButton, { backgroundColor: c.error }]}
-            onPress={logout}
-          >
-            <Text style={styles.logoutButtonText}>{t('logout', 'Выйти из аккаунта')}</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.resetButton, { borderColor: c.error }]}
-            onPress={() => setResetDialogVisible(true)}
-          >
-            <Text style={{ color: c.error }}>{t('reset_all', 'Сбросить всё')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={[styles.section, Platform.select({
+        web: { marginBottom: 40 },
+        ios: { marginBottom: 24 },
+        android: { marginBottom: 20 }
+      })]}>
+        {user?.email ? (
+          // User is logged in - show account info
+          <>
+            <View style={[styles.userInfo, Platform.select({
+              web: { paddingVertical: 20 },
+              ios: { paddingVertical: 16 },
+              android: { paddingVertical: 12 }
+            })]}>
+              <Text style={[styles.userEmail, { color: c.text }]}>{user.email}</Text>
+              {user.name && <Text style={[styles.userName, { color: c.text }]}>{user.name}</Text>}
+            </View>
+            <TouchableOpacity 
+              style={[styles.logoutButton, { backgroundColor: c.error }]}
+              onPress={logout}
+            >
+              <Text style={[styles.logoutButtonText, Platform.select({
+                web: { fontSize: 16 },
+                ios: { fontSize: 15 },
+                android: { fontSize: 14 }
+              })]}>
+                {t('logout', 'Выйти из аккаунта')}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.resetButton, 
+                { borderColor: c.error },
+                Platform.select({
+                  web: { marginTop: 12, marginBottom: 16 },
+                  ios: { marginTop: 8, marginBottom: 12 },
+                  android: { marginTop: 6, marginBottom: 10 }
+                })
+              ]}
+              onPress={() => setResetDialogVisible(true)}
+            >
+              <Text style={[{ color: c.error }, Platform.select({
+                web: { fontSize: 15 },
+                ios: { fontSize: 14 },
+                android: { fontSize: 13 }
+              })]}>
+                {t('reset_all', 'Сбросить всё')}
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          // User is not logged in - show login button
+          <>
+            <View style={[styles.userInfo, Platform.select({
+              web: { paddingVertical: 16 },
+              ios: { paddingVertical: 12 },
+              android: { paddingVertical: 10 }
+            })]}>
+              <Text style={[{ color: c.placeholder, textAlign: 'center', marginBottom: 16 }]}>
+                {t('login_required', 'Необходимо войти в аккаунт')}
+              </Text>
+              
+              <TouchableOpacity 
+                style={[styles.loginButton, { backgroundColor: c.primary }]}
+                onPress={async () => {
+                  try {
+                    // Sign out current session (if any) and force auth screen to show
+                    await supabase.auth.signOut();
+                    await AsyncStorage.removeItem('supabaseSession');
+                    // Update auth context to trigger the auth screen
+                    setIsAuth(false);
+                  } catch (error) {
+                    console.error('Error during logout:', error);
+                  }
+                }}
+              >
+                <Text style={[styles.loginButtonText, Platform.select({
+                  web: { fontSize: 16 },
+                  ios: { fontSize: 15 },
+                  android: { fontSize: 14 }
+                })]}>
+                  {t('login', 'Войти в аккаунт')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </View>
       
       <Portal>
         <Dialog 

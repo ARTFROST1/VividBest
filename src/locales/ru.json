@@ -52,7 +52,7 @@
   "completed": "выполнено",
   "new_task_placeholder": "Новая задача...",
   "new_task": "Новая задача",
-  "priority": "Приоритет:",
+  "priority": "Приоритет",
   "tags": "Метки:",
   "new_tag_placeholder": "Новая метка",
   "folders_and_notes": "Папки и заметки",
@@ -71,7 +71,7 @@
   "create_as_note": "Создать как заметку",
   "create_as_folder": "Создать как папку",
   "create": "Создать",
-  "repeat": "Повторять:",
+  "repeat": "Повторять",
   "remind": "Напомнить:",
   "time": "Время"
 } 

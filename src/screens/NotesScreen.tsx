@@ -356,7 +356,8 @@ const NotesScreen = () => {
     swipeActionContainer: {
       flexDirection: 'row',
       width: 90,
-      height: '100%',
+      height: '80%',
+      marginTop: 2,
     },
     swipeDeleteButton: {
       backgroundColor: c.swipeDelete,
@@ -947,8 +948,7 @@ const NotesScreen = () => {
               onPress={() => handleSidebarDelete(note.id, false)}
               activeOpacity={0.7}
             >
-              <IconButton icon="trash-can-outline" size={22} iconColor="#FFFFFF" style={styles.swipeActionIcon} />
-              <Text style={styles.swipeActionText}>{t('delete', 'Delete')}</Text>
+              <IconButton icon="trash-can-outline" size={25} iconColor="#FFFFFF" style={styles.swipeActionIcon} />
             </TouchableOpacity>
           </View>
         )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, Alert, Modal, Pressable, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, StyleSheet, TextInput, Alert, Modal, Pressable, KeyboardAvoidingView, Platform, Dimensions, Image } from 'react-native';
 import { Text, Button, useTheme, ActivityIndicator } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
@@ -137,14 +137,32 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
   const themedStyles = StyleSheet.create({
     container: {
       flex: 1,
-      justifyContent: 'center',
       alignItems: 'center',
       padding: 24,
+    },
+    formContainer: {
+      flex: 1,
+      alignItems: 'center',
+      paddingTop: 60,
+      paddingHorizontal: 20,
+      width: '100%',
+      maxWidth: 400,
+      alignSelf: 'center',
+    },
+    logoContainer: {
+      alignItems: 'center',
+      marginBottom: 20,
+      width: '100%',
+    },
+    logo: {
+      width: 170,
+      height: 170,
+      resizeMode: 'contain',
     },
     title: {
       fontSize: 28,
       fontWeight: 'bold',
-      marginBottom: 8,
+      marginBottom: 20,
       textAlign: 'center',
     },
     subtitle: {
@@ -210,14 +228,17 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[themedStyles.container, { backgroundColor: colors.background }] }>
-        <Text style={[themedStyles.title, { color: textColor }] }>
+      <View style={themedStyles.formContainer}>
+        <View style={themedStyles.logoContainer}>
+          {/* Logo Image */}
+          <Image 
+            source={require('../assets/images/mainlogo.png')}
+            style={themedStyles.logo}
+          />
+        </View>
+        
+        <Text style={[themedStyles.title, { color: textColor }]}>
           {isRegister ? 'Создать аккаунт' : 'Вход'}
-        </Text>
-        <Text style={[themedStyles.subtitle, { color: placeholderColor }] }>
-          {isRegister
-            ? 'Заполните форму для регистрации'
-            : 'Пожалуйста, войдите в свой аккаунт'}
         </Text>
         {isRegister && (
           <TextInput
@@ -270,11 +291,11 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
           </Pressable>
         </LinearGradient>
         <View style={themedStyles.bottomRow}>
-          <Text style={[themedStyles.bottomText, { color: placeholderColor }] }>
+          <Text style={[themedStyles.bottomText, { color: placeholderColor }]}>
             {isRegister ? 'Уже есть аккаунт? ' : 'Нет аккаунта? '}
           </Text>
           <Pressable onPress={() => setIsRegister(v => !v)} disabled={loading}>
-            <Text style={[themedStyles.linkText, { color: colors.primary }] }>
+            <Text style={[themedStyles.linkText, { color: colors.primary }]}>
               {isRegister ? 'Войти' : 'Зарегистрироваться'}
             </Text>
           </Pressable>
@@ -288,7 +309,7 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
       {/* Модальные окна восстановления пароля и смены пароля */}
       <Modal visible={showReset} animationType="slide" transparent>
         <View style={themedStyles.modalOverlay}>
-          <View style={[themedStyles.modalContent, { width: Math.min(windowWidth * 0.9, 400), borderRadius: typeof roundness === 'number' ? roundness + 6 : 18, backgroundColor: colors.surface }] }>
+          <View style={[themedStyles.modalContent, { width: Math.min(windowWidth * 0.9, 400), borderRadius: typeof roundness === 'number' ? roundness + 6 : 18, backgroundColor: colors.surface }]}>
             <Text style={[themedStyles.modalTitle, { color: textColor }]}>Восстановление пароля</Text>
             <TextInput
               style={[themedStyles.input, { borderColor, backgroundColor: colors.surface, color: textColor, borderRadius: roundness }]}
@@ -308,7 +329,7 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
       </Modal>
       <Modal visible={showChangePass} animationType="slide" transparent>
         <View style={themedStyles.modalOverlay}>
-          <View style={[themedStyles.modalContent, { width: Math.min(windowWidth * 0.9, 400), borderRadius: typeof roundness === 'number' ? roundness + 6 : 18, backgroundColor: colors.surface }] }>
+          <View style={[themedStyles.modalContent, { width: Math.min(windowWidth * 0.9, 400), borderRadius: typeof roundness === 'number' ? roundness + 6 : 18, backgroundColor: colors.surface }]}>
             <Text style={[themedStyles.modalTitle, { color: textColor }]}>Смена пароля</Text>
             <TextInput
               style={[themedStyles.input, { borderColor, backgroundColor: colors.surface, color: textColor, borderRadius: roundness }]}
@@ -337,4 +358,4 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
   );
 };
 
-export default AuthScreen; 
+export default AuthScreen;

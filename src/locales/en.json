@@ -52,7 +52,7 @@
   "completed": "completed",
   "new_task_placeholder": "New task...",
   "new_task": "New Task",
-  "priority": "Priority:",
+  "priority": "Priority",
   "tags": "Tags:",
   "new_tag_placeholder": "New tag",
   "folders_and_notes": "Folders and notes",
@@ -71,7 +71,7 @@
   "create_as_note": "Create as note",
   "create_as_folder": "Create as folder",
   "create": "Create",
-  "repeat": "Repeat:",
+  "repeat": "Repeat",
   "remind": "Remind:",
   "time": "Time"
 } 

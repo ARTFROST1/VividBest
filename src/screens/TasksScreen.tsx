@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, FlatList, StyleSheet, Platform, Animated, Switch, ActionSheetIOS, Modal, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, LayoutChangeEvent, ScrollView, Alert, Linking } from 'react-native';
-import { Icon, Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, Menu, Divider, Chip } from 'react-native-paper';
+import { Icon, Checkbox, Text, TextInput, Button, Card, useTheme, FAB, ProgressBar, Menu, Divider, Chip, IconButton } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
@@ -60,6 +60,7 @@ const TasksScreen = () => {
   const [newTask, setNewTask] = useState('');
   const [inputVisible, setInputVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTabIndex, setSelectedTabIndex] = useState(1); // Default to 'Today' (middle tab)
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newTaskDate, setNewTaskDate] = useState(new Date());
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
@@ -68,6 +69,8 @@ const TasksScreen = () => {
   const [repeatInterval, setRepeatInterval] = useState<'none' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [reminderTime, setReminderTime] = useState<string | undefined>(undefined);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [prioritySelected, setPrioritySelected] = useState(false);
+  const [repeatSelected, setRepeatSelected] = useState(false);
   const theme = useTheme();
   const { colors, roundness } = theme;
   const c = colors as any;
@@ -243,8 +246,10 @@ const TasksScreen = () => {
       setInputVisible(false);
       setNewTaskDate(selectedDate);
       setPriority('medium');
+      setPrioritySelected(false);
       setSelectedTagIds([]);
       setRepeatInterval('none');
+      setRepeatSelected(false);
       setReminderTime(undefined);
     }
   };
@@ -323,7 +328,7 @@ const TasksScreen = () => {
       style={styles.swipeDeleteButton}
       onPress={() => handleDeleteTask(item.id)}
     >
-      <Text style={styles.swipeDeleteText}>Delete</Text>
+      <IconButton icon="trash-can-outline" size={25} iconColor="#FFFFFF" style={styles.swipeActionIcon} />
     </TouchableOpacity>
   );
 
@@ -395,12 +400,43 @@ const TasksScreen = () => {
     setShowDatePicker(false);
     if (date) {
       setSelectedDate(date);
+      // Update selected tab based on the date
+      const today = new Date();
+      const tomorrow = addDays(today, 1);
+      
+      if (formatDate(date) === formatDate(today)) {
+        setSelectedTabIndex(1); // Today
+      } else if (formatDate(date) === formatDate(tomorrow)) {
+        setSelectedTabIndex(2); // Tomorrow
+      } else if (date < today) {
+        setSelectedTabIndex(0); // Past
+      }
+    }
+  };
+
+  const handleTabChange = (event: any) => {
+    const index = event.nativeEvent.selectedSegmentIndex;
+    setSelectedTabIndex(index);
+    
+    const today = new Date();
+    
+    switch(index) {
+      case 0: // Past - set to yesterday for now
+        setSelectedDate(addDays(today, -1));
+        break;
+      case 1: // Today
+        setSelectedDate(today);
+        break;
+      case 2: // Tomorrow
+        setSelectedDate(addDays(today, 1));
+        break;
     }
   };
 
   const handleNewTaskDateChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    if (date) setNewTaskDate(date);
+    if (date) {
+      setNewTaskDate(date);
+    }
   };
 
   const handleInputFocus = () => setIsInputFocused(true);
@@ -433,74 +469,44 @@ const TasksScreen = () => {
     >
       <View style={[styles.container, { backgroundColor: theme.dark ? '#000000' : '#F2F2F7' }]}>
         <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
-        {/* Выбор даты */}
+        {/* Выбор даты - тройной переключатель */}
         <View style={styles.dateRow}>
-          <TouchableOpacity
-            onPress={() => setSelectedDate(new Date())}
-            style={[
-              styles.dateButton,
-              {
-                backgroundColor: formatDate(selectedDate) === formatDate(new Date()) 
-                  ? '#8a44da' 
-                  : Platform.OS === 'ios' 
-                    ? theme.dark ? '#2C2C2E' : '#F2F2F7'
-                    : colors.surface,
-                borderColor: formatDate(selectedDate) === formatDate(new Date())
-                  ? '#8a44da'
-                  : theme.dark ? '#3C3C3E' : '#E5E5EA',
-              }
-            ]}
-          >
-            <Text style={[
-              styles.dateButtonText,
-              {
-                color: formatDate(selectedDate) === formatDate(new Date())
-                  ? '#fff'
-                  : '#8a44da',
-                fontWeight: formatDate(selectedDate) === formatDate(new Date()) ? '600' : '500',
-              }
-            ]}>
-              {t('today', 'Сегодня')}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            onPress={() => setSelectedDate(addDays(new Date(), 1))}
-            style={[
-              styles.dateButton,
-              {
-                backgroundColor: formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) 
-                  ? '#8a44da' 
-                  : Platform.OS === 'ios'
-                    ? theme.dark ? '#2C2C2E' : '#F2F2F7'
-                    : colors.surface,
-                borderColor: formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
-                  ? '#8a44da'
-                  : theme.dark ? '#3C3C3E' : '#E5E5EA',
-              }
-            ]}
-          >
-            <Text style={[
-              styles.dateButtonText,
-              {
-                color: formatDate(selectedDate) === formatDate(addDays(new Date(), 1))
-                  ? '#fff'
-                  : '#8a44da',
-                fontWeight: formatDate(selectedDate) === formatDate(addDays(new Date(), 1)) ? '600' : '500',
-              }
-            ]}>
-              {t('tomorrow', 'Завтра')}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.segmentedControlContainer}>
+            <View style={[styles.segmentedControl, { backgroundColor: theme.dark ? '#1C1C1E' : '#F2F2F7' }]}>
+              {[t('past', 'Прошедшие'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.segmentButton,
+                    index === selectedTabIndex && styles.selectedSegment,
+                    index === selectedTabIndex && { backgroundColor: '#8a44da' },
+                    index === 0 && styles.leftSegment,
+                    index === 2 && styles.rightSegment,
+                  ]}
+                  onPress={() => handleTabChange({ nativeEvent: { selectedSegmentIndex: index } })}
+                >
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      {
+                        color: index === selectedTabIndex ? '#FFFFFF' : theme.dark ? '#FFFFFF' : '#000000',
+                        fontWeight: index === selectedTabIndex ? '600' : '500',
+                      },
+                    ]}
+                  >
+                    {value}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <DateTimePicker
               value={selectedDate}
               mode="date"
               display="default"
               themeVariant={theme.dark ? 'dark' : 'light'}
-              onChange={(event, date) => {
-                if (date) setSelectedDate(date);
-              }}
+              onChange={handleDateChange}
               style={{ width: 140 }}
             />
           </View>
@@ -620,10 +626,7 @@ const TasksScreen = () => {
                 </View>
               </View>
               {/* Остальные элементы блока (приоритет, повтор, переключатель, +Добавить) идут ниже, с отступами */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, marginBottom: 10 }}>
-                <Text style={[styles.iosMeta, { color: PRIORITY_COLORS[priority] }]}>{PRIORITY_LABELS[priority]}</Text>
-                <Text style={[styles.iosMeta, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{REPEAT_LABELS[repeatInterval]}</Text>
-              </View>
+
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                 <TouchableOpacity
                   style={[styles.iosButton, { flex: 1, marginRight: 8, backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
@@ -634,16 +637,16 @@ const TasksScreen = () => {
                         cancelButtonIndex: 3,
                         title: t('priority', 'Приоритет'),
                       }, (buttonIndex) => {
-                        if (buttonIndex === 0) setPriority('low');
-                        if (buttonIndex === 1) setPriority('medium');
-                        if (buttonIndex === 2) setPriority('high');
+                        if (buttonIndex === 0) { setPriority('low'); setPrioritySelected(true); }
+                        if (buttonIndex === 1) { setPriority('medium'); setPrioritySelected(true); }
+                        if (buttonIndex === 2) { setPriority('high'); setPrioritySelected(true); }
                       });
                     } else {
                       setShowPriorityModal(true);
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: '#8a44da' }]}>{t('priority', 'Приоритет')}</Text>
+                  <Text style={[styles.iosButtonText, { color: prioritySelected ? '#8a44da' : '#888888' }]}>{prioritySelected ? PRIORITY_LABELS[priority] : t('priority', 'Приоритет')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.iosButton, { flex: 1, backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
@@ -654,18 +657,18 @@ const TasksScreen = () => {
                         cancelButtonIndex: 5,
                         title: t('repeat', 'Повторять'),
                       }, (buttonIndex) => {
-                        if (buttonIndex === 0) setRepeatInterval('none');
-                        if (buttonIndex === 1) setRepeatInterval('daily');
-                        if (buttonIndex === 2) setRepeatInterval('weekly');
-                        if (buttonIndex === 3) setRepeatInterval('monthly');
-                        if (buttonIndex === 4) setRepeatInterval('yearly');
+                        if (buttonIndex === 0) { setRepeatInterval('none'); setRepeatSelected(true); }
+                        if (buttonIndex === 1) { setRepeatInterval('daily'); setRepeatSelected(true); }
+                        if (buttonIndex === 2) { setRepeatInterval('weekly'); setRepeatSelected(true); }
+                        if (buttonIndex === 3) { setRepeatInterval('monthly'); setRepeatSelected(true); }
+                        if (buttonIndex === 4) { setRepeatInterval('yearly'); setRepeatSelected(true); }
                       });
                     } else {
                       setShowRepeatModal(true);
                     }
                   }}
                 >
-                  <Text style={[styles.iosButtonText, { color: '#8a44da' }]}>{t('repeat', 'Повторять')}</Text>
+                  <Text style={[styles.iosButtonText, { color: repeatSelected ? '#8a44da' : '#888888' }]}>{repeatSelected ? REPEAT_LABELS[repeatInterval] : t('repeat', 'Повторять')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -718,7 +721,7 @@ const TasksScreen = () => {
               <View style={styles.modalOverlay}>
                 <View style={[styles.modalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 14 }]}>
                   {(['low', 'medium', 'high'] as const).map((p) => (
-                    <TouchableOpacity key={p} onPress={() => { setPriority(p); setShowPriorityModal(false); }} style={styles.modalOption}>
+                    <TouchableOpacity key={p} onPress={() => { setPriority(p); setPrioritySelected(true); setShowPriorityModal(false); }} style={styles.modalOption}>
                       <Text style={{ color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 17, fontWeight: '400' }}>{PRIORITY_LABELS[p]}</Text>
                     </TouchableOpacity>
                   ))}
@@ -732,7 +735,7 @@ const TasksScreen = () => {
               <View style={styles.modalOverlay}>
                 <View style={[styles.modalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 14 }]}>
                   {(['none', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((interval) => (
-                    <TouchableOpacity key={interval} onPress={() => { setRepeatInterval(interval as any); setShowRepeatModal(false); }} style={styles.modalOption}>
+                    <TouchableOpacity key={interval} onPress={() => { setRepeatInterval(interval as any); setRepeatSelected(true); setShowRepeatModal(false); }} style={styles.modalOption}>
                       <Text style={{ color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 17, fontWeight: '400' }}>{REPEAT_LABELS[interval]}</Text>
                     </TouchableOpacity>
                   ))}
@@ -847,6 +850,11 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 2,
   },
+  swipeActionIcon: {
+    margin: 0,
+    padding: 0,
+    marginBottom: -2,
+  },
   taskMeta: {
     fontSize: 13,
     marginRight: 8,
@@ -871,21 +879,38 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingHorizontal: 4,
   },
-  dateButton: {
+  segmentedControlContainer: {
+    flex: 2,
     marginRight: 10,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    paddingHorizontal: 12,
-    paddingVertical: 0,
-    minWidth: 100,
+  },
+  segmentedControl: {
     height: 36,
+    flexDirection: 'row',
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F2F2F7',
+  },
+  segmentButton: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
+  },
+  selectedSegment: {
+    backgroundColor: '#8a44da',
+  },
+  leftSegment: {
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+  },
+  rightSegment: {
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+  },
+  segmentButtonText: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   dateButtonText: {
     fontSize: 15,
@@ -1082,9 +1107,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     width: 80,
-    height: '100%',
+    height: '85%',
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
+    marginTop: 5,
   },
   swipeDeleteText: {
     color: '#FFFFFF',
