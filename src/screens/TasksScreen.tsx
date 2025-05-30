@@ -127,17 +127,35 @@ const TasksScreen = () => {
     AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
-  const filteredTasks = tasks
-    .filter(task => task.dueDate === formatDate(selectedDate))
-    .sort((a, b) => {
-      // Сначала невыполненные, потом выполненные
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-      // Внутри групп — по приоритету
-      const order = { high: 2, medium: 1, low: 0 };
-      return order[b.priority] - order[a.priority];
-    });
+  // Get tasks based on selected tab
+  const getFilteredTasks = () => {
+    // For Past tab (index 0), show tasks grouped by date
+    if (selectedTabIndex === 0) {
+      return tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return taskDate < today;
+      }).sort((a, b) => {
+        // Sort by date (newest first)
+        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+      });
+    } 
+    // For Today and Tomorrow tabs, keep existing behavior
+    return tasks
+      .filter(task => task.dueDate === formatDate(selectedDate))
+      .sort((a, b) => {
+        // Сначала невыполненные, потом выполненные
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1;
+        }
+        // Внутри групп — по приоритету
+        const order = { high: 2, medium: 1, low: 0 };
+        return order[b.priority] - order[a.priority];
+      });
+  };
+
+  const filteredTasks = getFilteredTasks();
 
   const completedCount = filteredTasks.filter(t => t.completed).length;
   const progress = filteredTasks.length > 0 ? completedCount / filteredTasks.length : 0;
@@ -444,6 +462,41 @@ const TasksScreen = () => {
     if (!newTask.trim()) setIsInputFocused(false);
   };
 
+  // Group past tasks by date categories
+  const groupTasksByDate = (tasks: Task[]) => {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const lastWeekStart = new Date(today);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return {
+      yesterday: tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        return taskDate.getTime() >= yesterday.getTime() && taskDate.getTime() < today.getTime();
+      }),
+      lastWeek: tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        return taskDate.getTime() >= lastWeekStart.getTime() && taskDate.getTime() < yesterday.getTime();
+      }),
+      lastMonth: tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        return taskDate.getTime() >= thirtyDaysAgo.getTime() && taskDate.getTime() < lastWeekStart.getTime();
+      }),
+      older: tasks.filter(task => {
+        const taskDate = new Date(task.dueDate);
+        return taskDate.getTime() < thirtyDaysAgo.getTime();
+      })
+    };
+  };
+
   // Анимация появления/скрытия блока опций
   useEffect(() => {
     if (isInputFocused) {
@@ -550,27 +603,29 @@ const TasksScreen = () => {
             <Text style={[styles.progressText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
           </View>
         )}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputRow}>
-            <TextInput
-              ref={inputRef}
-              value={newTask}
-              onChangeText={setNewTask}
-              placeholder={t('add_task_placeholder', 'Новая задача...')}
-              style={[
-                styles.input, 
-                { 
-                  backgroundColor: theme.dark ? '#1c1c1e' : '#e4e3e9',
-                  color: theme.dark ? '#888888' : '#888888',
-                  borderColor: theme.dark ? '#333333' : '#e4e3e9'
-                }
-              ]}
-              placeholderTextColor={theme.dark ? '#888888' : '#888888'}
-              onFocus={handleInputFocus}
-              onBlur={() => {}}
-            />
+        {selectedTabIndex !== 0 && (
+          <View style={styles.inputContainer}>
+            <View style={styles.inputRow}>
+              <TextInput
+                ref={inputRef}
+                value={newTask}
+                onChangeText={setNewTask}
+                placeholder={t('add_task_placeholder', 'Новая задача...')}
+                style={[
+                  styles.input, 
+                  { 
+                    backgroundColor: theme.dark ? '#1c1c1e' : '#e4e3e9',
+                    color: theme.dark ? '#888888' : '#888888',
+                    borderColor: theme.dark ? '#333333' : '#e4e3e9'
+                  }
+                ]}
+                placeholderTextColor={theme.dark ? '#888888' : '#888888'}
+                onFocus={handleInputFocus}
+                onBlur={() => {}}
+              />
+            </View>
           </View>
-        </View>
+        )}
         {/* Блок создания заметки только при isInputFocused */}
         {isInputFocused && (
           <Animated.View
@@ -748,14 +803,84 @@ const TasksScreen = () => {
           </Animated.View>
         )}
         <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        <FlatList
-          data={filteredTasks}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-          showsVerticalScrollIndicator={false}
-        />
+        {selectedTabIndex === 0 ? (
+          // Past tasks grouped by date
+          <ScrollView 
+            style={{flex: 1}}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {(() => {
+              const groupedTasks = groupTasksByDate(filteredTasks);
+              return (
+                <>
+                  {/* Yesterday */}
+                  {groupedTasks.yesterday.length > 0 && (
+                    <>
+                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('yesterday', 'Вчера')}</Text>
+                      {groupedTasks.yesterday.map(item => (
+                        <View key={item.id} style={{marginBottom: 8}}>
+                          {renderItem({item})}
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Last Week */}
+                  {groupedTasks.lastWeek.length > 0 && (
+                    <>
+                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_week', 'На прошлой неделе')}</Text>
+                      {groupedTasks.lastWeek.map(item => (
+                        <View key={item.id} style={{marginBottom: 8}}>
+                          {renderItem({item})}
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Last 30 Days */}
+                  {groupedTasks.lastMonth.length > 0 && (
+                    <>
+                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_30_days', 'Предыдущие 30 дней')}</Text>
+                      {groupedTasks.lastMonth.map(item => (
+                        <View key={item.id} style={{marginBottom: 8}}>
+                          {renderItem({item})}
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Older */}
+                  {groupedTasks.older.length > 0 && (
+                    <>
+                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('older', 'Более старые')}</Text>
+                      {groupedTasks.older.map(item => (
+                        <View key={item.id} style={{marginBottom: 8}}>
+                          {renderItem({item})}
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* No tasks message */}
+                  {filteredTasks.length === 0 && (
+                    <Text style={[styles.emptyListText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{t('no_past_tasks', 'Нет прошедших задач')}</Text>
+                  )}
+                </>
+              );
+            })()} 
+          </ScrollView>
+        ) : (
+          // Regular task list for Today and Tomorrow tabs
+          <FlatList
+            data={filteredTasks}
+            renderItem={renderItem}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -817,7 +942,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 32,
-    paddingTop: 8,
+    paddingTop: 0,
   },
   taskCard: {
     marginVertical: 2,
@@ -917,6 +1042,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     letterSpacing: -0.2,
+  },
+  timeGroupHeader: {
+    fontSize: 23,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  emptyListText: {
+    textAlign: 'center',
+    marginTop: 32,
+    fontSize: 16,
   },
   calendarButton: {
     marginRight: 8,
