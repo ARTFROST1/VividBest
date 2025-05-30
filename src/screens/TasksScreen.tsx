@@ -132,13 +132,13 @@ const TasksScreen = () => {
     // For Past tab (index 0), show tasks grouped by date
     if (selectedTabIndex === 0) {
       return tasks.filter(task => {
-        const taskDate = new Date(task.dueDate);
+        const taskDate = new Date(task.dueDate + 'T00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return taskDate < today;
       }).sort((a, b) => {
         // Sort by date (newest first)
-        return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        return new Date(b.dueDate + 'T00:00').getTime() - new Date(a.dueDate + 'T00:00').getTime();
       });
     } 
     // For Today and Tomorrow tabs, keep existing behavior
