@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomTabs from './BottomTabs';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import NoteEditorScreen from '../screens/NoteEditorScreen';
@@ -9,7 +10,8 @@ import AuthScreen from '../screens/AuthScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { ActivityIndicator, View } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext, AuthProvider } from '../context/AuthContext';
+import { ThemedStatusBar } from '../components/ThemedStatusBar';
 
 const Stack = createNativeStackNavigator();
 
@@ -62,14 +64,17 @@ const RootNavigator = () => {
   // return <WelcomeScreen onStart={() => setShowWelcome(false)} />;
 
   return (
-    <AuthContext.Provider value={{ isAuth: !!isAuth, logout, setIsAuth }}>
-      <Stack.Navigator screenOptions={{ headerShown: false }} id={undefined}>
-        <Stack.Screen name="MainTabs" component={BottomTabs} />
-        <Stack.Screen name="NoteEditor" component={NoteEditorScreen} />
-        <Stack.Screen name="NotificationsSettings" component={NotificationsSettingsScreen} />
-        <Stack.Screen name="EditorSettings" component={EditorSettingsScreen} />
-      </Stack.Navigator>
-    </AuthContext.Provider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <ThemedStatusBar />
+        <Stack.Navigator screenOptions={{ headerShown: false }} id={undefined}>
+          <Stack.Screen name="MainTabs" component={BottomTabs} />
+          <Stack.Screen name="NoteEditor" component={NoteEditorScreen} />
+          <Stack.Screen name="NotificationsSettings" component={NotificationsSettingsScreen} />
+          <Stack.Screen name="EditorSettings" component={EditorSettingsScreen} />
+        </Stack.Navigator>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 };
 

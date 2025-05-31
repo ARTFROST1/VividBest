@@ -526,7 +526,7 @@ const TasksScreen = () => {
         <View style={styles.dateRow}>
           <View style={styles.segmentedControlContainer}>
             <View style={[styles.segmentedControl, { backgroundColor: theme.dark ? '#1C1C1E' : '#E9E9EB' }]}>
-              {[t('past', 'Прошедшие'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => {
+              {[t('past', 'Прошлые'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => {
                 const isSelected = index === selectedTabIndex;
                 return (
                   <TouchableOpacity
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   segmentedControl: {
-    height: 30,
+    height: 34,
     flexDirection: 'row',
     borderRadius: 8,
     overflow: 'hidden',
