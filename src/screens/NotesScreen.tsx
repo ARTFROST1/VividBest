@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notesEventBus from '../utils/notesEventBus';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IOSContextMenu from '../components/IOSContextMenu';
+import HTML from 'react-native-render-html';
+import { WebView } from 'react-native-webview';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -93,6 +95,218 @@ function moveItem(items: NoteItem[], itemId: string, targetFolderId: string | nu
   return newItems;
 }
 
+// Helper function to determine if content has complex formatting
+const hasComplexContent = (content?: string): boolean => {
+  if (!content) return false;
+  
+  // Check for various formatting elements
+  const hasChecklist = /- \[(x| )\] (.+?)(?=\n|$)/g.test(content);
+  const hasBulletList = /^- (.+?)(?=\n|$)/gm.test(content);
+  const hasNumberedList = /^\d+\. (.+?)(?=\n|$)/gm.test(content);
+  const hasImage = /!\[(.*)\]\((.+?)\)/g.test(content);
+  const hasHeadings = /^#+\s.+$/gm.test(content);
+  const hasCodeBlock = /```[\s\S]*?```/g.test(content);
+  
+  return hasChecklist || hasBulletList || hasNumberedList || hasImage || hasHeadings || hasCodeBlock;
+};
+
+// Helper function to convert markdown to HTML with enhanced styling
+const convertMarkdownToHtml = (markdown: string): string => {
+  let html = markdown;
+  
+  // Convert headings with proper styling
+  html = html.replace(/^# (.+)$/gm, '<h1 style="font-size: 24px; font-weight: bold; margin-bottom: 12px; color: #FFFFFF;">$1</h1>');
+  html = html.replace(/^## (.+)$/gm, '<h2 style="font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #FFFFFF;">$1</h2>');
+  html = html.replace(/^### (.+)$/gm, '<h3 style="font-size: 18px; font-weight: bold; margin-bottom: 8px; color: #FFFFFF;">$1</h3>');
+  
+  // Convert bold and italic with proper styling
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight: bold; color: #FFFFFF;">$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em style="font-style: italic; color: #FFFFFF;">$1</em>');
+  
+  // Convert checkboxes with custom rendering
+  html = html.replace(/- \[(x)\] (.+?)(?=\n|$)/g, 
+    '<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 8px;">' +
+    '<div style="width: 18px; height: 18px; border-radius: 4px; background-color: #4CAF50; margin-right: 10px; display: flex; justify-content: center; align-items: center;">' +
+    '<span style="color: white; font-size: 12px;">✓</span>' +
+    '</div>' +
+    '<span style="color: #999999; text-decoration: line-through;">$2</span>' +
+    '</div>');
+    
+  html = html.replace(/- \[ \] (.+?)(?=\n|$)/g, 
+    '<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 8px;">' +
+    '<div style="width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #999999; margin-right: 10px;"></div>' +
+    '<span style="color: #FFFFFF;">$1</span>' +
+    '</div>');
+  
+  // Convert bullet lists with proper styling
+  html = html.replace(/^- (.+?)(?=\n|$)/gm, (match, p1) => {
+    // Skip if this is a checkbox item
+    if (match.includes('- [') && (match.includes('- [x]') || match.includes('- [ ]'))) {
+      return match;
+    }
+    return '<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 8px;">' +
+           '<div style="width: 6px; height: 6px; border-radius: 3px; background-color: #FFFFFF; margin-right: 10px; margin-left: 5px;"></div>' +
+           '<span style="color: #FFFFFF;">'+p1+'</span>' +
+           '</div>';
+  });
+  
+  // Convert numbered lists with proper styling
+  html = html.replace(/^(\d+)\. (.+?)(?=\n|$)/gm, 
+    '<div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 8px;">' +
+    '<span style="color: #FFFFFF; margin-right: 8px; width: 16px; text-align: right;">$1.</span>' +
+    '<span style="color: #FFFFFF;">$2</span>' +
+    '</div>');
+  
+  // Convert images with placeholder styling
+  html = html.replace(/!\[(.*)\]\((.+?)\)/g, 
+    '<div style="display: flex; flex-direction: column; align-items: center; margin: 10px 0;">' +
+    '<div style="width: 100px; height: 80px; background-color: #333333; border-radius: 8px; display: flex; justify-content: center; align-items: center;">' +
+    '<span style="color: #999999; font-size: 24px;">🖼️</span>' +
+    '</div>' +
+    '<span style="color: #CCCCCC; font-size: 12px; margin-top: 5px;">$1</span>' +
+    '</div>');
+  
+  // Convert links with proper styling
+  html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" style="color: #4CAF50; text-decoration: underline;">$1</a>');
+  
+  // Convert code blocks with proper styling
+  html = html.replace(/```([\s\S]*?)```/g, 
+    '<div style="background-color: #333333; border-radius: 8px; padding: 10px; margin: 10px 0; overflow-x: auto;">' +
+    '<pre style="color: #CCCCCC; font-family: monospace; margin: 0;"><code>$1</code></pre>' +
+    '</div>');
+  
+  // Convert inline code with proper styling
+  html = html.replace(/`(.+?)`/g, '<code style="background-color: #333333; border-radius: 4px; padding: 2px 4px; color: #CCCCCC; font-family: monospace;">$1</code>');
+  
+  // Convert blockquotes with proper styling
+  html = html.replace(/^> (.+?)(?=\n|$)/gm, 
+    '<div style="border-left: 3px solid #4CAF50; padding-left: 10px; margin: 10px 0;">' +
+    '<span style="color: #CCCCCC; font-style: italic;">$1</span>' +
+    '</div>');
+  
+  // Convert paragraphs with proper styling
+  const paragraphs = html.split('\n\n');
+  html = paragraphs.map(p => {
+    // Skip if paragraph already has HTML tags
+    if (p.trim() === '' || /<[a-z][\s\S]*>/i.test(p)) {
+      return p;
+    }
+    return '<p style="color: #FFFFFF; margin-bottom: 10px;">' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  
+  return html;
+};
+
+// Helper function to extract emoji from text
+const extractEmoji = (text: string): { emoji: string | null, remainingText: string } => {
+  // Common emoji patterns
+  const emojiRegex = /^(\p{Emoji}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Emoji_Modifier_Base}|\p{Emoji_Component})+/u;
+  const match = text.match(emojiRegex);
+  
+  if (match && match[0]) {
+    return {
+      emoji: match[0],
+      remainingText: text.slice(match[0].length).trim()
+    };
+  }
+  
+  // Check for food emoji patterns in text
+  const foodEmojiMap = {
+    // Grocery items
+    'eggs': '🥚',
+    'egg': '🥚',
+    'milk': '🥛',
+    'sugar': '🧂',
+    'flour': '🌾',
+    'bread': '🍞',
+    'rice': '🍚',
+    'onions': '🧅',
+    'onion': '🧅',
+    'beef': '🥩',
+    'chicken': '🍗',
+    'lettuce': '🥬',
+    'tomato': '🍅',
+    'tomatoes': '🍅',
+    'potato': '🥔',
+    'potatoes': '🥔',
+    'carrot': '🥕',
+    'carrots': '🥕',
+    'corn': '🌽',
+    'cheese': '🧀',
+    'butter': '🧈',
+    'apple': '🍎',
+    'apples': '🍎',
+    'banana': '🍌',
+    'bananas': '🍌',
+    'orange': '🍊',
+    'oranges': '🍊',
+    'lemon': '🍋',
+    'lemons': '🍋',
+    'strawberry': '🍓',
+    'strawberries': '🍓',
+    'blueberry': '🫐',
+    'blueberries': '🫐',
+    'fish': '🐟',
+    'shrimp': '🦐',
+    'pasta': '🍝',
+    'noodles': '🍜',
+    'pizza': '🍕',
+    'hamburger': '🍔',
+    'sushi': '🍣',
+    'cake': '🍰',
+    'cookie': '🍪',
+    'cookies': '🍪',
+    'chocolate': '🍫',
+    'candy': '🍬',
+    'wine': '🍷',
+    'beer': '🍺',
+    'coffee': '☕',
+    'tea': '🍵',
+    'water': '💧',
+    'salt': '🧂',
+    'pepper': '🌶️',
+    
+    // Travel items
+    'tent': '⛺',
+    'backpack': '🎒',
+    'camera': '📷',
+    'map': '🗺️',
+    'compass': '🧭',
+    'flashlight': '🔦',
+    'sunscreen': '🧴',
+    'sunglasses': '🕶️',
+    'hat': '🧢',
+    'boots': '👢',
+    'ticket': '🎫',
+    'passport': '📔',
+    'hotel': '🏨',
+    'beach': '🏖️',
+    'mountain': '⛰️',
+    'forest': '🌲',
+    'lake': '🏞️',
+    'camp': '🏕️',
+    'hiking': '🥾',
+    'swimming': '🏊'
+  };
+  
+  // Check if the text contains any of the food keywords
+  for (const [keyword, emoji] of Object.entries(foodEmojiMap)) {
+    // Check for whole word match with word boundaries
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(text.toLowerCase())) {
+      return {
+        emoji: emoji,
+        remainingText: text
+      };
+    }
+  }
+  
+  return {
+    emoji: null,
+    remainingText: text
+  };
+};
+
 const NotesScreen = () => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -122,9 +336,342 @@ const NotesScreen = () => {
   
   // Define styles inside the component to access theme colors
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: c.background,
+  viewSwitcherButton: {
+    margin: 0,
+    padding: 0,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 8,
+  },
+  gridItem: {
+    width: '50%',
+    padding: 8,
+  },
+  gridItemContent: {
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 150,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 5,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    backgroundColor: '#1E1E1E', // Dark background to match screenshot
+  },
+  gridItemContentLarge: {
+    minHeight: 220,
+  },
+  gridPinIndicator: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    backgroundColor: '#FFD700',
+    borderBottomLeftRadius: 12,
+  },
+  gridItemTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#FFFFFF', // White text for dark background
+  },
+  gridItemPreview: {
+    fontSize: 14,
+    marginBottom: 8,
+    flex: 1,
+    color: '#FFFFFF', // White text for dark background
+  },
+  gridItemDate: {
+    fontSize: 12,
+    color: '#999999', // Light gray for date text
+    marginTop: 'auto',
+  },
+  previewContent: {
+    flex: 1,
+    marginBottom: 4,
+    maxHeight: 200, // Allow more space for content
+    overflow: 'hidden',
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#999999', // Light gray border
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#4CAF50', // Green for checked items
+    borderColor: '#4CAF50',
+  },
+  checklistText: {
+    fontSize: 15,
+    color: '#FFFFFF', // White text for dark background
+    flex: 1,
+    fontWeight: '400',
+  },
+  checklistTextChecked: {
+    textDecorationLine: 'line-through',
+    color: '#999999', // Light gray for checked items
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bulletPoint: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF', // White bullet points for dark background
+    marginRight: 10,
+    marginLeft: 5,
+  },
+  numberPoint: {
+    fontSize: 14,
+    color: '#FFFFFF', // White text for dark background
+    marginRight: 8,
+    width: 16,
+    textAlign: 'right',
+  },
+  listText: {
+    fontSize: 14,
+    color: '#FFFFFF', // White text for dark background
+    flex: 1,
+  },
+  imagePreviewContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  imagePreviewPlaceholder: {
+    width: 100,
+    height: 80,
+    backgroundColor: '#333333',
+    borderRadius: 8,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageCaption: {
+    fontSize: 12,
+    color: '#CCCCCC',
+    marginTop: 5,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: c.background,
+  },
+  timeGroupHeader: {
+    fontSize: 23,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    color: c.text,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: c.text,
+    letterSpacing: -0.5,
+  },
+  headerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  headerButtonText: {
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  headerButtonPlaceholder: {
+    width: 40,
+  },
+  notesMain: {
+    flex: 1,
+    paddingHorizontal: 1,
+    paddingTop: 12, // корректировка отступов
+    paddingBottom: 0,
+  },
+  searchBlock: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  iosSearchField: {
+    height: 36,
+    backgroundColor: c.chipBg,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 17,
+    color: c.text,
+    width: '100%',
+  },
+  notesListBlock: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 0,
+  },
+  noteCardContainer: {
+    backgroundColor: c.noteItem,
+    marginBottom: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    marginHorizontal: 2,
+  },
+  noteCardContent: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  noteContentWrapper: {
+    flex: 1,
+    marginRight: 8,
+  },
+  noteTitle: {
+    fontWeight: '600',
+    fontSize: 17,
+    color: c.text,
+    marginBottom: 4,
+  },
+  pinnedIndicator: {
+    opacity: 0.8,
+  },
+  notePreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  noteTime: {
+    fontSize: 15,
+    color: c.placeholder,
+    marginRight: 6,
+    fontWeight: '400',
+  },
+  noteSubtitle: {
+    fontSize: 15,
+    color: c.placeholder,
+    flex: 1,
+    fontWeight: '400',
+  },
+  noteAccessoryContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  noteAccessoryIcon: {
+    margin: 0,
+    padding: 0,
+  },
+  addButtonContainer: {
+    position: 'absolute',
+    right: 24,
+    bottom: 24,
+    elevation: 2,
+    zIndex: 100,
+  },
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: c.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '400',
+    marginTop: -4,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 32,
+    fontSize: 16,
+  },
+  webSidebarWrap: {
+    position: 'absolute',
+    left: 0,
+    top: 56, // высота AppBar
+    bottom: 0,
+    width: 280,
+    zIndex: 10,
+  },
+  overlayBg: {
+    flex: 1,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.4)',
+  },
+  mobileSidebarOverlay: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    flexDirection: 'row',
+  },
+  mobileSidebar: {
+    width: 280,
+    height: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalOverlayCustom: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentCustom: {
+    minWidth: 320,
+    maxWidth: 400,
+    width: '90%',
+    padding: 24,
+    borderRadius: 18,
+    backgroundColor: c.modalBackground,
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
     },
     timeGroupHeader: {
       fontSize: 23,
@@ -454,6 +1001,7 @@ const NotesScreen = () => {
   const [moveSource, setMoveSource] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'kanban'>('tree');
+  const [viewType, setViewType] = useState<'list' | 'grid'>('list');
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeSidebarFilter, setActiveSidebarFilter] = useState<string | null>(null);
   const navigation = useNavigation();
@@ -891,6 +1439,249 @@ const NotesScreen = () => {
     });
   }
 
+  // Рендер сетки заметок (плитками)
+  function renderNotesGrid(items: NoteItem[]) {
+    // Только заметки (не папки)
+    const notes = items.filter(item => !item.isFolder);
+    if (notes.length === 0) {
+      return <Text style={[styles.emptyText, { color: c.placeholder }]}>{t('no_notes', 'Нет заметок')}</Text>;
+    }
+    
+    // Группируем заметки по времени (так же как в списке)
+    const groupedNotes = groupNotesByTime(notes);
+    
+    // Сортируем заметки по времени (сначала новые)
+    const sortedToday = groupedNotes.today.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const sortedYesterday = groupedNotes.yesterday.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const sortedPrevious30Days = groupedNotes.previous30Days.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    
+    // Функция для рендеринга заметки в виде плитки
+    const renderGridItem = (note: NoteItem) => {
+      // Render note preview content to match the editor view
+      const renderNotePreview = () => {
+        if (!note.content) {
+          return <Text style={styles.gridItemPreview}>{t('note_preview_placeholder', 'No text')}</Text>;
+        }
+
+        // Process content for preview
+        let content = note.content;
+        
+        // Check for different content types
+        const hasChecklist = /- \[(x| )\] (.+?)(?=\n|$)/g.test(content);
+        const hasBulletList = /^- (.+?)(?=\n|$)/gm.test(content) && !hasChecklist;
+        const hasImage = /!\[(.*)\]\((.+?)\)/g.test(content);
+        
+        // For checklist items (most common in the screenshot)
+        if (hasChecklist) {
+          const checklistRegex = /- \[(x| )\] (.+?)(?=\n|$)/g;
+          const checklistItems = [];
+          let match;
+          let count = 0;
+          const maxItems = 8; // Show more items to fill the tile
+          
+          // Reset regex lastIndex
+          checklistRegex.lastIndex = 0;
+          
+          // First, extract a section heading if present
+          const headingRegex = /^#+\s(.+?)\n/;
+          const headingMatch = headingRegex.exec(content);
+          let heading = null;
+          
+          if (headingMatch) {
+            const { emoji, remainingText } = extractEmoji(headingMatch[1]);
+            
+            heading = (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                {emoji && (
+                  <Text style={{ fontSize: 22, marginRight: 10 }}>{emoji}</Text>
+                )}
+                <Text style={{
+                  fontSize: 20, 
+                  fontWeight: 'bold', 
+                  color: '#FFFFFF',
+                }}>
+                  {remainingText || headingMatch[1]}
+                </Text>
+              </View>
+            );
+          }
+          
+          while ((match = checklistRegex.exec(content)) !== null && count < maxItems) {
+            const isChecked = match[1] === 'x';
+            const itemText = match[2];
+            
+            // Check for emoji in the checklist item
+            const { emoji, remainingText } = extractEmoji(itemText);
+            
+            checklistItems.push(
+              <View key={count} style={styles.checklistItem}>
+                <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
+                  {isChecked && (
+                    <MaterialCommunityIcons name="check" size={14} color="#fff" />
+                  )}
+                </View>
+                {emoji ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Text style={{ fontSize: 18, marginRight: 10 }}>{emoji}</Text>
+                    <Text 
+                      style={[styles.checklistText, isChecked && styles.checklistTextChecked]} 
+                      numberOfLines={1}
+                    >
+                      {remainingText}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text 
+                    style={[styles.checklistText, isChecked && styles.checklistTextChecked]} 
+                    numberOfLines={1}
+                  >
+                    {itemText}
+                  </Text>
+                )}
+              </View>
+            );
+            count++;
+          }
+          
+          return (
+            <View style={styles.previewContent}>
+              {heading}
+              {checklistItems}
+            </View>
+          );
+        }
+        
+        // For bullet lists
+        if (hasBulletList) {
+          const bulletListRegex = /^- (.+?)(?=\n|$)/gm;
+          const listItems = [];
+          let match;
+          let count = 0;
+          const maxItems = 6; // Show more items to fill the tile
+          
+          // Reset regex lastIndex
+          bulletListRegex.lastIndex = 0;
+          
+          while ((match = bulletListRegex.exec(content)) !== null && count < maxItems) {
+            const itemText = match[1];
+            
+            listItems.push(
+              <View key={count} style={styles.listItem}>
+                <View style={styles.bulletPoint} />
+                <Text style={[styles.listText, { color: '#FFFFFF' }]} numberOfLines={1}>{itemText}</Text>
+              </View>
+            );
+            count++;
+          }
+          
+          return (
+            <View style={styles.previewContent}>
+              {listItems}
+            </View>
+          );
+        }
+        
+        // For images
+        if (hasImage) {
+          const imageRegex = /!\[(.*)\]\((.+?)\)/g;
+          let match = imageRegex.exec(content);
+          
+          if (match) {
+            const altText = match[1];
+            return (
+              <View style={styles.previewContent}>
+                <View style={styles.imagePreviewContainer}>
+                  <View style={styles.imagePreviewPlaceholder}>
+                    <MaterialCommunityIcons name="image-outline" size={24} color="#999999" />
+                  </View>
+                  <Text style={[styles.imageCaption, { color: '#FFFFFF' }]} numberOfLines={1}>{altText || t('image', 'Image')}</Text>
+                </View>
+                <Text style={styles.gridItemPreview} numberOfLines={3}>
+                  {content.replace(/!\[(.*)\]\((.+?)\)/g, '').replace(/<[^>]+>/g, '').replace(/\n/g, ' ').slice(0, 100) + 
+                    (content.length > 100 ? '…' : '')}
+                </Text>
+              </View>
+            );
+          }
+        }
+        
+        // For regular text content
+        return (
+          <Text style={styles.gridItemPreview} numberOfLines={6}>
+            {content.replace(/<[^>]+>/g, '').replace(/\n/g, ' ').slice(0, 200) + 
+              (content.replace(/<[^>]+>/g, '').length > 200 ? '…' : '')}
+          </Text>
+        );
+      };
+      
+      return (
+        <TouchableOpacity
+          key={note.id}
+          style={styles.gridItem}
+          onPress={() => {
+            // @ts-ignore
+            navigation.navigate('NoteEditor', { id: note.id, title: note.title });
+          }}
+          onLongPress={() => openNoteMenu(note.id, note.isFolder)}
+        >
+          <View 
+            style={[
+              styles.gridItemContent, 
+              { backgroundColor: c.noteItem },
+              // Make height responsive to content
+              note.content && note.content.length > 300 ? styles.gridItemContentLarge : null,
+              // Make height responsive to content type
+              hasComplexContent(note.content) ? styles.gridItemContentLarge : null
+            ]}
+          >
+            {note.pinned && <View style={styles.gridPinIndicator} />}
+            <Text style={styles.gridItemTitle} numberOfLines={1}>
+              {note.title}
+            </Text>
+            {renderNotePreview()}
+            <Text style={styles.gridItemDate}>
+              {note.timestamp ? new Date(note.timestamp).toLocaleDateString() : ''}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    };  
+    
+    return (
+      <>
+        {/* Сегодня */}
+        {sortedToday.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('today', 'Today')}</Text>
+            <View style={styles.gridContainer}>
+              {sortedToday.map(renderGridItem)}
+            </View>
+          </>
+        )}
+        
+        {/* Вчера */}
+        {sortedYesterday.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('yesterday', 'Yesterday')}</Text>
+            <View style={styles.gridContainer}>
+              {sortedYesterday.map(renderGridItem)}
+            </View>
+          </>
+        )}
+        
+        {/* Предыдущие 30 дней */}
+        {sortedPrevious30Days.length > 0 && (
+          <>
+            <Text style={styles.timeGroupHeader}>{t('previous_30_days', 'Previous 30 Days')}</Text>
+            <View style={styles.gridContainer}>
+              {sortedPrevious30Days.map(renderGridItem)}
+            </View>
+          </>
+        )}
+      </>
+    );
+  }
+
   // Рендер списка заметок (минималистичный, как в макете)
   function renderNotesList(items: NoteItem[]) {
     // Только заметки (не папки)
@@ -1156,7 +1947,22 @@ const NotesScreen = () => {
             <Text style={[styles.headerButtonText, { color: c.primary }]}>{t('menu', 'Меню')}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Notes</Text>
-          <View style={styles.headerButtonPlaceholder} />
+          {(activeSidebarFilter && activeFolderNotes.length > 0) || 
+           (!activeSidebarFilter && notes.filter(n => !n.isFolder).length > 0) ? (
+            <TouchableOpacity 
+              onPress={() => setViewType(viewType === 'list' ? 'grid' : 'list')} 
+              style={styles.headerButton}
+            >
+              <IconButton 
+                icon={viewType === 'list' ? 'grid' : 'format-list-bulleted'} 
+                size={22} 
+                iconColor={c.primary}
+                style={styles.viewSwitcherButton}
+              />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.headerButtonPlaceholder} />
+          )}
         </View>
       </SafeAreaView>
       {/* Sidebar для web (открывается по кнопке) */}
@@ -1210,6 +2016,8 @@ const NotesScreen = () => {
             activeUnderlineColor="transparent"
           />
         </View>
+        
+
         {/* Пустой экран, если нет папок */}
         {activeSidebarFilter == null && (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -1226,7 +2034,7 @@ const NotesScreen = () => {
             <Text style={{ color: c.placeholder, fontSize: 18, marginBottom: 16 }}>{t('no_notes', 'Нет заметок')}</Text>
           </View>
         )}
-        {/* Обычный список заметок */}
+        {/* Список или сетка заметок */}
         {(
           // Если выбрана папка и в ней есть заметки
           (activeSidebarFilter && activeFolderNotes.length > 0) ||
@@ -1234,7 +2042,10 @@ const NotesScreen = () => {
           (!activeSidebarFilter && notes.filter(n => !n.isFolder).length > 0)
         ) && (
           <ScrollView style={styles.notesListBlock}>
-            {renderNotesList(filterNotes(filterBySidebar(notes), search))}
+            {viewType === 'list' 
+              ? renderNotesList(filterNotes(filterBySidebar(notes), search))
+              : renderNotesGrid(filterNotes(filterBySidebar(notes), search))
+            }
           </ScrollView>
         )}
         {/* Диалог создания заметки/папки */}
