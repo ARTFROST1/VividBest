@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StatusBar, View, StyleSheet, Platform } from 'react-native';
+import { StatusBar, View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@react-navigation/native';
 import { useThemeToggle } from '../context/ThemeToggleContext';
 
@@ -7,6 +8,7 @@ const DARK_BG = '#000';
 const LIGHT_BG = '#f3f2f8';
 
 export const ThemedStatusBar: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { isDark } = useThemeToggle();
   const [isReady, setIsReady] = useState(false);
@@ -33,21 +35,15 @@ export const ThemedStatusBar: React.FC = () => {
         backgroundColor={isDark ? DARK_BG : LIGHT_BG}
       />
       <View 
-        style={[
-          styles.safeArea,
-          { backgroundColor: isDark ? DARK_BG : LIGHT_BG }
-        ]} 
+        style={{ 
+          height: insets.top,
+          backgroundColor: isDark ? DARK_BG : LIGHT_BG,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0
+        }} 
       />
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: Platform.select({ ios: 50, android: 0 }), // Adjust height for iOS notch
-  },
-});
