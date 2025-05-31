@@ -622,15 +622,19 @@ const TasksScreen = () => {
                 placeholder={t('add_task_placeholder', 'Новая задача...')}
                 style={[
                   styles.input, 
-                  { 
+                  {
                     backgroundColor: theme.dark ? '#1c1c1e' : '#e4e3e9',
                     color: theme.dark ? '#888888' : '#888888',
-                    borderColor: theme.dark ? '#333333' : '#e4e3e9'
+                    borderWidth: 0,
+                    borderBottomWidth: 0
                   }
                 ]}
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
                 placeholderTextColor={theme.dark ? '#888888' : '#888888'}
                 onFocus={handleInputFocus}
                 onBlur={() => {}}
+                underlineColorAndroid="transparent"
               />
             </View>
           </View>
@@ -642,9 +646,9 @@ const TasksScreen = () => {
               opacity: optionsAnim,
               transform: [{ translateY: optionsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
               marginBottom: 12,
-              backgroundColor: colors.elevation?.level2 || (theme.dark ? colors.surface : colors.background),
+              backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF',
               borderRadius: roundness * 2, 
-              padding: 16,
+              padding: 1,
               shadowColor: theme.dark ? '#000' : '#222',
               shadowOpacity: 0.10,
               shadowRadius: 12,
@@ -923,7 +927,6 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    marginRight: 8,
     fontSize: 17,
     height: 36,
     borderWidth: 0,
@@ -933,9 +936,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   addBtn: {
     minWidth: 48,

@@ -1203,9 +1203,11 @@ const NotesScreen = () => {
             placeholder={t('search_notes_placeholder', 'Поиск')}
             value={search}
             onChangeText={setSearch}
-            style={styles.iosSearchField}
+            style={[styles.iosSearchField, { borderWidth: 0, borderBottomWidth: 0 }]}
             placeholderTextColor="#8E8E93"
             clearButtonMode="while-editing"
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
           />
         </View>
         {/* Пустой экран, если нет папок */}

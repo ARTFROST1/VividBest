@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  MainTabs: undefined;
+  NoteEditor: undefined;
+  NotificationsSettings: undefined;
+  EditorSettings: undefined;
+};
 import { View, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Text, Switch, RadioButton, List, Divider, Button, useTheme, Card, Dialog, Portal } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -13,7 +21,7 @@ import notesEventBus from '../utils/notesEventBus';
 import { Ionicons } from '@expo/vector-icons';
 
 const SettingsScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isDark, toggleTheme } = useThemeToggle();
   const { t } = useTranslation();
   const { colors, roundness } = useTheme();
