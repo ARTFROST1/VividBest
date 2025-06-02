@@ -4,6 +4,7 @@ import mitt from 'mitt';
 export type NotesEvents = {
   reset: void;
   noteUpdated: { id: string; timestamp: number };
+  notesChanged: void;
 };
 
 const notesEventBus = mitt<NotesEvents>();

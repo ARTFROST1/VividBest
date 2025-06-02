@@ -1,3 +1,4 @@
+import AllNotesIcon from '../assets/icons/all_notes/all_notes.png';
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import NotesScreen from '../screens/NotesScreen';
@@ -6,6 +7,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
+import { Image } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 
@@ -15,6 +17,7 @@ const BottomTabs = () => {
   const c = colors as any;
   return (
     <Tab.Navigator
+      id={undefined}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -44,7 +47,7 @@ const BottomTabs = () => {
         options={{
           title: t('all_notes'),
           tabBarIcon: ({ color, size, focused }) => (
-            <MaterialCommunityIcons name="notebook-outline" color={color} size={focused ? size + 4 : size} />
+            <Image source={AllNotesIcon} style={{ width: size, height: size, tintColor: color }} resizeMode="contain" />
           ),
         }}
       />

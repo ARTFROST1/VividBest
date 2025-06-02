@@ -105,7 +105,7 @@ const NoteDetailScreenIOS: React.FC = () => {
         });
         
         await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(updatedNotes));
-        notesEventBus.publish('notesChanged');
+        notesEventBus.emit('notesChanged');
         
         // Update local state
         setNote({
@@ -143,7 +143,7 @@ const NoteDetailScreenIOS: React.FC = () => {
         });
         
         await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(updatedNotes));
-        notesEventBus.publish('notesChanged');
+        notesEventBus.emit('notesChanged');
         
         // Update local state
         setNote({
@@ -169,7 +169,7 @@ const NoteDetailScreenIOS: React.FC = () => {
         const updatedNotes = notes.filter(n => n.id !== noteId);
         
         await AsyncStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(updatedNotes));
-        notesEventBus.publish('notesChanged');
+        notesEventBus.emit('notesChanged');
         
         // Go back to notes list
         navigation.goBack();
