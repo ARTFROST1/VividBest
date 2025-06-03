@@ -1749,7 +1749,11 @@ const NotesScreen = () => {
       <SafeAreaView style={{ backgroundColor: c.background }}>
         <View style={styles.headerContainer}>
           <TouchableOpacity onPress={() => setSidebarVisible(true)} style={styles.headerButton}>
-            <Text style={[styles.headerButtonText, { color: c.primary }]}>{t('menu', 'Меню')}</Text>
+            <Image 
+              source={require('../assets/icons/SidebarIcon.png')} 
+              style={{ width: 24, height: 24, tintColor: c.primary }} 
+              accessibilityLabel={t('sidebar_menu', 'Open sidebar menu')}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Notes</Text>
           {(activeSidebarFilter && activeFolderNotes.length > 0) || 

@@ -7,6 +7,14 @@ export interface NoteData {
   title: string;
   content: string;
   timestamp?: number; // Время создания/изменения заметки
+  mediaAttachments?: Array<{
+    id: string;
+    uri: string;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  }>;
 }
 
 const SUPABASE_URL = 'https://fhbzxfwihphbbqymnwfh.supabase.co';
@@ -20,18 +28,21 @@ export async function saveNote(note: NoteData): Promise<void> {
     id: note.id,
     title: note.title,
     content: note.content,
+    media_attachments: note.mediaAttachments,
     updated_at: new Date().toISOString(),
   });
 }
 
 export async function loadNote(id: string): Promise<NoteData | null> {
-  const { data, error } = await supabase.from('notes').select('id, title, content').eq('id', id).single();
+  const { data, error } = await supabase.from('notes').select('id, title, content, media_attachments').eq('id', id).single();
   if (error || !data) return null;
   return {
     id: data.id,
     title: data.title,
     content: data.content,
+    mediaAttachments: data.media_attachments,
   };
+
 }
 
 export async function uploadNoteImage(uri: string, userId: string): Promise<string | null> {
