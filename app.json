@@ -8,6 +8,13 @@
     "slug": "Vivid",
     "android": {
       "package": "com.vivid.evokak"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "83df1461-dbdb-4793-ad37-2869d8dbdbf6"
+      }
+    },
+    "owner": "artfrost"
   }
 }
