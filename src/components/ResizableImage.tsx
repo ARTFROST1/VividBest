@@ -7,6 +7,7 @@ import {
   PanResponder,
   GestureResponderEvent,
   PanResponderGestureState,
+  Platform,
   Dimensions,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
@@ -35,6 +36,10 @@ export const ResizableImage: React.FC<ResizableImageProps> = ({
   x,
   y,
 }) => {
+  // Temporarily disable ResizableImage on Android to avoid crash
+  if (Platform.OS === 'android') {
+    return null;
+  }
   // Get screen dimensions for max width
   const screenWidth = Dimensions.get('window').width - 40;
   const actualMaxWidth = Math.min(maxWidth, screenWidth);

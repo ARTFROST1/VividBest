@@ -196,6 +196,7 @@ export default function NoteEditorScreen({ route, navigation }) {
 
   useEffect(() => {
     // Ищем все уникальные URL в тексте
+    if (Platform.OS === 'android') return;
     const urlRegex = /(https?:\/\/[^\s"'<>]+)/g;
     const urls = Array.from(new Set((content.match(urlRegex) || [])));
     if (urls.length === 0) return;
@@ -255,9 +256,11 @@ export default function NoteEditorScreen({ route, navigation }) {
         </TouchableOpacity>
         
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
-            <IconButton icon={showToolbar ? "format-text" : "format-color-text"} size={20} iconColor={c.primary} />
-          </TouchableOpacity>
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
+              <IconButton icon={showToolbar ? "format-text" : "format-color-text"} size={20} iconColor={c.primary} />
+            </TouchableOpacity>
+          )}
           
           <Text style={[styles.saveStatus, { color: saveStatus === 'saving' ? c.placeholder : '#4caf50' }]}>
             {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
@@ -291,27 +294,40 @@ export default function NoteEditorScreen({ route, navigation }) {
         {/* Editor Container with Rich Text Editor and Images */}
         <View style={styles.editorContainer}>
           {/* Rich Text Editor */}
-          <RichEditor
-            ref={richText}
-            initialContentHTML={content}
-            onChange={setContent}
-            style={styles.editor}
-            placeholder={t('note_text_placeholder', 'Текст заметки...')}
-            editorStyle={{
-              color: c.text,
-              backgroundColor: 'transparent',
-              cssText: `body { 
-                padding: 0; 
-                line-height: 1.5; 
-                font-family: ${Platform.OS === 'ios' ? 'System' : 'sans-serif'};
-                font-size: 16px;
-              }`
-            }}
-            onTouchStart={() => setShowToolbar(true)}
-          />
+          {Platform.OS === 'ios' ? (
+            <RichEditor
+              ref={richText}
+              initialContentHTML={content}
+              onChange={setContent}
+              style={styles.editor}
+              placeholder={t('note_text_placeholder', 'Текст заметки...')}
+              editorStyle={{
+                color: c.text,
+                backgroundColor: 'transparent',
+                cssText: `body { 
+                  padding: 0; 
+                  line-height: 1.5; 
+                  font-family: System;
+                  font-size: 16px;
+                }`
+              }}
+              onTouchStart={() => setShowToolbar(true)}
+            />
+          ) : (
+            <TextInput
+              value={content}
+              onChangeText={setContent}
+              placeholder={t('note_text_placeholder', 'Текст заметки...')}
+              multiline
+              style={[styles.androidEditor, { color: c.text }]}
+              textAlignVertical="top"
+              underlineColor="transparent"
+              theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
+            />
+          )}
           
           {/* Media Attachments Container - Positioned absolutely over the editor */}
-          {mediaAttachments.length > 0 && (
+          {Platform.OS !== 'android' && mediaAttachments.length > 0 && (
             <View style={styles.mediaContainer}>
               {mediaAttachments.map(attachment => {
                 // Ensure all values are proper numbers
@@ -351,7 +367,7 @@ export default function NoteEditorScreen({ route, navigation }) {
       </ScrollView>
       
       {/* Toolbar */}
-      {showToolbar && (
+      {Platform.OS === 'ios' && showToolbar && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
@@ -460,6 +476,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 0,
     zIndex: 1,
+  },
+  androidEditor: {
+    minHeight: 300,
+    backgroundColor: 'transparent',
+    fontSize: 16,
+    paddingHorizontal: 0,
   },
   toolbarContainer: {
     borderTopWidth: 0.5,
