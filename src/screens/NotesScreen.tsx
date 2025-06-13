@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import IOSContextMenu from '../components/IOSContextMenu';
 import HTML from 'react-native-render-html';
 import { WebView } from 'react-native-webview';
+import { saveNoteLocal } from '../services/notesService';
 
 // Для MVP: добавим статус заметки (только для Канбан-доски)
 type NoteStatus = 'todo' | 'inprogress' | 'done';
@@ -817,6 +818,8 @@ const NotesScreen = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuTarget, setMenuTarget] = useState<{ id: string; isFolder: boolean } | null>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const [pendingNewNoteId, setPendingNewNoteId] = useState<string | null>(null);
+  const [pendingNewNoteTitle, setPendingNewNoteTitle] = useState<string>('');
 
   // Функция для загрузки всех заметок и папок из AsyncStorage
   const loadAllNotes = async () => {
@@ -835,10 +838,32 @@ const NotesScreen = () => {
             try {
               const noteRaw = await AsyncStorage.getItem(`note_${item.id}`);
               if (noteRaw) {
-                const note = JSON.parse(noteRaw);
-                return { ...item, content: note.content, title: note.title }; // Обновляем и content, и title
+                let note;
+                try {
+                  note = JSON.parse(noteRaw);
+                } catch {
+                  note = null;
+                }
+                // Если заметка повреждена или невалидна, создаём дефолтную
+                if (!note || typeof note !== 'object') {
+                  note = { id: item.id, title: item.title, content: '', mediaAttachments: [], timestamp: item.timestamp };
+                } else {
+                  // Гарантируем наличие обязательных полей
+                  if (typeof note.content !== 'string') note.content = '';
+                  if (!Array.isArray(note.mediaAttachments)) note.mediaAttachments = [];
+                  if (typeof note.title !== 'string') note.title = item.title;
+                  if (!note.id) note.id = item.id;
+                  if (!note.timestamp) note.timestamp = item.timestamp;
+                }
+                return { ...item, content: note.content, title: note.title };
+              } else {
+                // Если заметка не найдена в хранилище, создаём дефолтную
+                return { ...item, content: '', title: item.title };
               }
-            } catch {}
+            } catch {
+              // Если ошибка при чтении — создаём дефолтную
+              return { ...item, content: '', title: item.title };
+            }
           }
           return item;
         }));
@@ -909,6 +934,32 @@ const NotesScreen = () => {
     }
   }, [activeSidebarFilter]);
 
+  useEffect(() => {
+    if (pendingNewNoteId) {
+      // Проверяем, появилась ли заметка в notes
+      const noteExists = (function find(items: NoteItem[]): boolean {
+        for (const item of items) {
+          if (item.id === pendingNewNoteId) return true;
+          if (item.children) {
+            if (find(item.children)) return true;
+          }
+        }
+        return false;
+      })(notes);
+
+      if (noteExists) {
+        // Гарантируем, что id и title — строки
+        const id = String(pendingNewNoteId);
+        const title = String(pendingNewNoteTitle);
+        console.log('Navigate to NoteEditor', { id, title, typeofId: typeof id, typeofTitle: typeof title });
+        // Передаём параметры как объект, не массив
+        navigation.navigate('NoteEditor', { id, title });
+        setPendingNewNoteId(null);
+        setPendingNewNoteTitle('');
+      }
+    }
+  }, [notes, pendingNewNoteId, pendingNewNoteTitle]);
+
   // Функция для определения уровня вложенности папки по id
   function getFolderLevel(items: NoteItem[], folderId: string | null, level = 0): number | null {
     if (!folderId) return 0;
@@ -949,7 +1000,7 @@ const NotesScreen = () => {
   };
 
   // handleAdd: разрешаем создавать папки в корне, если выбран 'Корень'
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newTitle.trim()) return;
     
     const currentTimestamp = Date.now();
@@ -987,15 +1038,26 @@ const NotesScreen = () => {
       return [...prev, newItem];
     });
     
+    // Если создаём заметку (не папку), сразу сохраняем её в AsyncStorage
+    if (!isFolder) {
+      await saveNoteLocal({
+        id: newId,
+        title: newTitle.trim(),
+        content: '',
+        timestamp: currentTimestamp,
+        mediaAttachments: [],
+      });
+    }
+    
     setShowDialog(false);
     setNewTitle('');
     // Сбрасываем выбор источника перемещения
     setMoveSource(null);
     
-    // Если создали заметку, открываем её в редакторе
+    // Если создали заметку, сохраняем id и title для перехода позже
     if (!isFolder) {
-      // @ts-ignore
-      navigation.navigate('NoteEditor', { id: newId, title: newTitle.trim() });
+      setPendingNewNoteId(newId);
+      setPendingNewNoteTitle(newTitle.trim());
     }
   };
 

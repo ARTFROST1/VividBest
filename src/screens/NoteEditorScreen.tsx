@@ -49,6 +49,8 @@ export default function NoteEditorScreen({ route, navigation }) {
     y: number;
   }>>([]);
 
+  console.log('NoteEditorScreen route.params', route?.params);
+
   // Сохраняем заметку с задержкой
   const debouncedSave = useCallback(
     debounce(async (note: NoteData) => {
@@ -94,14 +96,21 @@ export default function NoteEditorScreen({ route, navigation }) {
     if (id) {
       loadNoteLocal(id).then(note => {
         if (note) {
-          setTitle(note.title);
-          setContent(note.content);
-          // Загружаем медиа-вложения, если они есть
+          // Гарантируем валидность полей
+          setTitle(typeof note.title === 'string' ? note.title : '');
+          setContent(typeof note.content === 'string' ? note.content : '');
           if (note.mediaAttachments && Array.isArray(note.mediaAttachments)) {
             setMediaAttachments(note.mediaAttachments);
+          } else {
+            setMediaAttachments([]);
           }
           // Устанавливаем начальные значения для отслеживания изменений
           isFirstLoad.current = true;
+        } else {
+          // Если заметка не найдена или невалидна
+          setTitle('');
+          setContent('');
+          setMediaAttachments([]);
         }
       });
     }

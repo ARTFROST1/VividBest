@@ -12,6 +12,16 @@ import i18n from '../src/locales/i18n';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/context/AuthContext';
 
+// Debug helper – сохраняет последний console.log, чтобы увидеть его в logcat
+if (__DEV__) {
+  const origLog = console.log;
+  console.log = (...args: any[]) => {
+    // @ts-ignore – кладём в global, чтобы native мог напечатать
+    global.lastLog = JSON.stringify(args, null, 2);
+    origLog(...args);
+  };
+}
+
 // Component to handle safe area and status bar theme updates
 const ThemedSafeArea = ({ isDark, children }: { isDark: boolean; children: React.ReactNode }) => {
   const insets = useSafeAreaInsets();
@@ -41,9 +51,9 @@ const ThemedSafeArea = ({ isDark, children }: { isDark: boolean; children: React
 
 export default function AppLayout() {
   const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme === 'dark');
+  const [isDark, setIsDark] = useState<boolean>(systemScheme === 'dark');
   const appState = useRef(AppState.currentState);
-  const themeUpdateTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const themeUpdateTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   
   // Handle theme updates in a way that ensures proper iOS rendering
   const updateTheme = useCallback((newIsDark: boolean) => {

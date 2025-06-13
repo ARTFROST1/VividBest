@@ -92,6 +92,8 @@ const TasksScreen = () => {
   const inputRef = useRef(null);
   const [barWidth, setBarWidth] = useState(0);
   const animatedProgress = useRef(new Animated.Value(0)).current;
+  const [showNewTaskDatePicker, setShowNewTaskDatePicker] = useState(false);
+  const [showNewTaskTimePicker, setShowNewTaskTimePicker] = useState(false);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -563,14 +565,37 @@ const TasksScreen = () => {
             </View>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="default"
-              themeVariant={theme.dark ? 'dark' : 'light'}
-              onChange={handleDateChange}
-              style={{ width: 140 }}
-            />
+            {Platform.OS === 'ios' ? (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display="default"
+                themeVariant={theme.dark ? 'dark' : 'light'}
+                onChange={handleDateChange}
+                style={{ width: 140 }}
+              />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.calendarButton}
+                >
+                  <Icon source="calendar" size={24} color={theme.dark ? '#fff' : '#000'} />
+                  <Text style={styles.selectedDateText}>{formatDate(selectedDate)}</Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowDatePicker(false);
+                      if (date) handleDateChange(event, date);
+                    }}
+                  />
+                )}
+              </>
+            )}
           </View>
         </View>
         {showDatePicker && (
@@ -662,35 +687,88 @@ const TasksScreen = () => {
                 {/* Левая часть — дата */}
                 <View style={styles.iosCol}>
                   <Text style={[styles.iosLabel, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('date', 'Дата')}</Text>
-                  <DateTimePicker
-                    value={newTaskDate}
-                    mode="date"
-                    display="default"
-                    themeVariant={theme.dark ? 'dark' : 'light'}
-                    onChange={(event, date) => {
-                      if (date) setNewTaskDate(date);
-                    }}
-                    style={{ width: 120 }}
-                  />
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={newTaskDate}
+                      mode="date"
+                      display="default"
+                      themeVariant={theme.dark ? 'dark' : 'light'}
+                      onChange={(event, date) => {
+                        if (date) setNewTaskDate(date);
+                      }}
+                      style={{ width: 120 }}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.iosButton, { backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
+                        onPress={() => setShowNewTaskDatePicker(true)}
+                      >
+                        <Text style={[styles.iosButtonText, { color: '#8a44da' }]}> 
+                          {formatDate(newTaskDate)}
+                        </Text>
+                      </TouchableOpacity>
+                      {showNewTaskDatePicker && (
+                        <DateTimePicker
+                          value={newTaskDate}
+                          mode="date"
+                          display="default"
+                          onChange={(event, date) => {
+                            setShowNewTaskDatePicker(false);
+                            if (date) setNewTaskDate(date);
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
                 </View>
                 {/* Правая часть — время */}
                 <View style={styles.iosCol}>
                   <Text style={[styles.iosLabel, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('time', 'Время')}</Text>
-                  <DateTimePicker
-                    value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : newTaskDate}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    themeVariant={theme.dark ? 'dark' : 'light'}
-                    onChange={(event, date) => {
-                      if (date) {
-                        const h = date.getHours().toString().padStart(2, '0');
-                        const m = date.getMinutes().toString().padStart(2, '0');
-                        setReminderTime(`${h}:${m}`);
-                      }
-                    }}
-                    style={{ width: 120 }}
-                  />
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : newTaskDate}
+                      mode="time"
+                      is24Hour={true}
+                      display="default"
+                      themeVariant={theme.dark ? 'dark' : 'light'}
+                      onChange={(event, date) => {
+                        if (date) {
+                          const h = date.getHours().toString().padStart(2, '0');
+                          const m = date.getMinutes().toString().padStart(2, '0');
+                          setReminderTime(`${h}:${m}`);
+                        }
+                      }}
+                      style={{ width: 120 }}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.iosButton, { backgroundColor: theme.dark ? '#2C2C2E' : '#F2F2F7', borderColor: theme.dark ? '#3C3C3E' : '#E5E5EA', borderRadius: 10 }]}
+                        onPress={() => setShowNewTaskTimePicker(true)}
+                      >
+                        <Text style={[styles.iosButtonText, { color: '#8a44da' }]}> 
+                          {reminderTime ? reminderTime : '--:--'}
+                        </Text>
+                      </TouchableOpacity>
+                      {showNewTaskTimePicker && (
+                        <DateTimePicker
+                          value={reminderTime ? new Date(`${formatDate(newTaskDate)}T${reminderTime}:00`) : newTaskDate}
+                          mode="time"
+                          is24Hour={true}
+                          display="default"
+                          onChange={(event, date) => {
+                            setShowNewTaskTimePicker(false);
+                            if (date) {
+                              const h = date.getHours().toString().padStart(2, '0');
+                              const m = date.getMinutes().toString().padStart(2, '0');
+                              setReminderTime(`${h}:${m}`);
+                            }
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
                 </View>
               </View>
               {/* Остальные элементы блока (приоритет, повтор, переключатель, +Добавить) идут ниже, с отступами */}

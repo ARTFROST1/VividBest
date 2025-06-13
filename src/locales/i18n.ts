@@ -10,11 +10,15 @@ const resources = {
   en: { translation: en },
 };
 
+// Ensure locale is a valid string to avoid errors in environments where Localization.locale may be undefined
+const deviceLocale: string = typeof Localization.locale === 'string' ? Localization.locale : 'en';
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: Localization.locale.startsWith('ru') ? 'ru' : 'en',
+    // Use a safe fallback when device locale is unavailable
+    lng: deviceLocale.startsWith('ru') ? 'ru' : 'en',
     fallbackLng: 'en',
     compatibilityJSON: 'v4',
     interpolation: {

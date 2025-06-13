@@ -305,6 +305,27 @@ const AuthScreen = ({ onAuthSuccess }: { onAuthSuccess: () => void }) => {
             <Text style={[themedStyles.forgotText, { color: placeholderColor }]}>Забыли пароль?</Text>
           </Pressable>
         )}
+        {/* Кнопка "Продолжить как гость" теперь всегда видна */}
+        <Pressable
+          onPress={onAuthSuccess}
+          style={{
+            marginTop: 18,
+            marginBottom: 12,
+            width: 320,
+            alignSelf: 'center',
+            borderRadius: roundness,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            backgroundColor: colors.background,
+            paddingVertical: 14,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>
+            Продолжить как гость
+          </Text>
+        </Pressable>
       </View>
       {/* Модальные окна восстановления пароля и смены пароля */}
       <Modal visible={showReset} animationType="slide" transparent>
