@@ -33,6 +33,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const { id } = route?.params || {};
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [selection, setSelection] = useState<{start:number; end:number}>({start:0,end:0});
   const isFirstLoad = useRef(true);
   const richText = useRef<any>(null);
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
@@ -146,7 +147,27 @@ export default function NoteEditorScreen({ route, navigation }) {
   }, [title, content, id, mediaAttachments]);
 
   // Вставка Markdown-разметки
-  const handleFormat = (markdown) => {
+  const handleFormat = (markdown: string) => {
+    // Для Android вставляем/оборачиваем выбранный текст маркдаун-токеном
+    if (Platform.OS === 'android') {
+      setContent(prev => {
+        const { start, end } = selection;
+        if (start === undefined || end === undefined) return prev + markdown;
+        // paired tokens
+        if (markdown.trim() === '-' || markdown.trim() === '>' ) {
+          // list / quote prefix at cursor line
+          const before = prev.slice(0, start);
+          const after = prev.slice(start);
+          return before + markdown + ' ' + after;
+        }
+        const beforeSel = prev.slice(0, start);
+        const selText = prev.slice(start, end);
+        const afterSel = prev.slice(end);
+        return beforeSel + markdown + selText + markdown + afterSel;
+      });
+      return;
+    }
+    // iOS fallback
     setContent((prev) => prev + markdown);
   };
 
@@ -256,19 +277,16 @@ export default function NoteEditorScreen({ route, navigation }) {
         </TouchableOpacity>
         
         <View style={styles.headerRight}>
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
-              <IconButton icon={showToolbar ? "format-text" : "format-color-text"} size={20} iconColor={c.primary} />
-            </TouchableOpacity>
-          )}
-          
+          <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
+            <IconButton icon={showToolbar ? 'format-text' : 'format-color-text'} size={20} iconColor={c.primary} />
+          </TouchableOpacity>
           <Text style={[styles.saveStatus, { color: saveStatus === 'saving' ? c.placeholder : '#4caf50' }]}>
             {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
           </Text>
         </View>
       </View>
 
-      {/* Content */}
+       {/* Content */}
       <ScrollView 
         contentContainerStyle={styles.contentContainer} 
         keyboardShouldPersistTaps="handled"
@@ -317,6 +335,8 @@ export default function NoteEditorScreen({ route, navigation }) {
             <TextInput
               value={content}
               onChangeText={setContent}
+              selection={selection}
+              onSelectionChange={(e)=>setSelection(e.nativeEvent.selection)}
               placeholder={t('note_text_placeholder', 'Текст заметки...')}
               multiline
               style={[styles.androidEditor, { color: c.text }]}
@@ -402,6 +422,20 @@ export default function NoteEditorScreen({ route, navigation }) {
                 onPress={() => setShowMediaOptions(!showMediaOptions)}
               />
             </View>
+          </Surface>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Android Toolbar */}
+      {Platform.OS === 'android' && showToolbar && (
+        <KeyboardAvoidingView behavior={undefined}>
+          <Surface style={[styles.toolbarContainer, { backgroundColor: dark ? '#1C1C1E' : '#F2F2F7', borderTopColor: c.border }]}>            
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarRow}>
+              {formattingButtons.map(btn => (
+                <IconButton key={btn.icon} icon={btn.icon} size={20} iconColor={c.primary} onPress={()=>handleFormat(btn.markdown)} />
+              ))}
+              <IconButton icon="image-plus" size={24} iconColor={c.primary} style={styles.mediaButton} onPress={() => setShowMediaOptions(!showMediaOptions)} />
+            </ScrollView>
           </Surface>
         </KeyboardAvoidingView>
       )}
