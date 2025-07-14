@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { useTags } from '../hooks/useTags';
 import { TagSelector } from '../components/TagSelector';
 import { PrioritySelector } from '../components/PrioritySelector';
+import { TaskCalendar } from '../components/TaskCalendar';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -94,6 +95,7 @@ const TasksScreen = () => {
   const animatedProgress = useRef(new Animated.Value(0)).current;
   const [showNewTaskDatePicker, setShowNewTaskDatePicker] = useState(false);
   const [showNewTaskTimePicker, setShowNewTaskTimePicker] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -523,7 +525,20 @@ const TasksScreen = () => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
       <View style={[styles.container, { backgroundColor: theme.dark ? '#000000' : '#F2F2F7' }]}>
-        <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
+        {/* Заголовок с кнопкой переключения режима */}
+        <View style={styles.headerRow}>
+          <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
+          <TouchableOpacity
+            style={[styles.viewModeButton, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}
+            onPress={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
+          >
+            <Icon 
+              source={viewMode === 'list' ? 'calendar' : 'format-list-bulleted'} 
+              size={20} 
+              color={theme.dark ? '#FFFFFF' : '#000000'} 
+            />
+          </TouchableOpacity>
+        </View>
         {/* Выбор даты - тройной переключатель */}
         <View style={styles.dateRow}>
           <View style={styles.segmentedControlContainer}>
@@ -894,83 +909,108 @@ const TasksScreen = () => {
           </Animated.View>
         )}
         <Divider style={[styles.divider, { backgroundColor: c.divider }]} />
-        {selectedTabIndex === 0 ? (
-          // Past tasks grouped by date
-          <ScrollView 
-            style={{flex: 1}}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {(() => {
-              const groupedTasks = groupTasksByDate(filteredTasks);
-              return (
-                <>
-                  {/* Yesterday */}
-                  {groupedTasks.yesterday.length > 0 && (
-                    <>
-                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('yesterday', 'Вчера')}</Text>
-                      {groupedTasks.yesterday.map(item => (
-                        <View key={item.id} style={{marginBottom: 8}}>
-                          {renderItem({item})}
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Last Week */}
-                  {groupedTasks.lastWeek.length > 0 && (
-                    <>
-                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_week', 'На прошлой неделе')}</Text>
-                      {groupedTasks.lastWeek.map(item => (
-                        <View key={item.id} style={{marginBottom: 8}}>
-                          {renderItem({item})}
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Last 30 Days */}
-                  {groupedTasks.lastMonth.length > 0 && (
-                    <>
-                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_30_days', 'Предыдущие 30 дней')}</Text>
-                      {groupedTasks.lastMonth.map(item => (
-                        <View key={item.id} style={{marginBottom: 8}}>
-                          {renderItem({item})}
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Older */}
-                  {groupedTasks.older.length > 0 && (
-                    <>
-                      <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('older', 'Более старые')}</Text>
-                      {groupedTasks.older.map(item => (
-                        <View key={item.id} style={{marginBottom: 8}}>
-                          {renderItem({item})}
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* No tasks message */}
-                  {filteredTasks.length === 0 && (
-                    <Text style={[styles.emptyListText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{t('no_past_tasks', 'Нет прошедших задач')}</Text>
-                  )}
-                </>
-              );
-            })()} 
-          </ScrollView>
-        ) : (
-          // Regular task list for Today and Tomorrow tabs
-          <FlatList
-            data={filteredTasks}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            showsVerticalScrollIndicator={false}
+        
+        {/* Условный рендеринг: календарь или списки */}
+        {viewMode === 'calendar' ? (
+          <TaskCalendar
+            tasks={tasks}
+            selectedDate={selectedDate}
+            onDateSelect={(date) => {
+              setSelectedDate(date);
+              // Обновляем выбранную вкладку при выборе даты
+              const today = new Date();
+              const tomorrow = addDays(today, 1);
+              
+              if (formatDate(date) === formatDate(today)) {
+                setSelectedTabIndex(1); // Today
+              } else if (formatDate(date) === formatDate(tomorrow)) {
+                setSelectedTabIndex(2); // Tomorrow
+              } else if (date < today) {
+                setSelectedTabIndex(0); // Past
+              }
+            }}
           />
+        ) : (
+          <>
+            {selectedTabIndex === 0 ? (
+              // Past tasks grouped by date
+              <ScrollView 
+                style={{flex: 1}}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {(() => {
+                  const groupedTasks = groupTasksByDate(filteredTasks);
+                  return (
+                    <>
+                      {/* Yesterday */}
+                      {groupedTasks.yesterday.length > 0 && (
+                        <>
+                          <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('yesterday', 'Вчера')}</Text>
+                          {groupedTasks.yesterday.map(item => (
+                            <View key={item.id} style={{marginBottom: 8}}>
+                              {renderItem({item})}
+                            </View>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Last Week */}
+                      {groupedTasks.lastWeek.length > 0 && (
+                        <>
+                          <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_week', 'На прошлой неделе')}</Text>
+                          {groupedTasks.lastWeek.map(item => (
+                            <View key={item.id} style={{marginBottom: 8}}>
+                              {renderItem({item})}
+                            </View>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Last 30 Days */}
+                      {groupedTasks.lastMonth.length > 0 && (
+                        <>
+                          <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('last_30_days', 'Предыдущие 30 дней')}</Text>
+                          {groupedTasks.lastMonth.map(item => (
+                            <View key={item.id} style={{marginBottom: 8}}>
+                              {renderItem({item})}
+                            </View>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* Older */}
+                      {groupedTasks.older.length > 0 && (
+                        <>
+                          <Text style={[styles.timeGroupHeader, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('older', 'Более старые')}</Text>
+                          {groupedTasks.older.map(item => (
+                            <View key={item.id} style={{marginBottom: 8}}>
+                              {renderItem({item})}
+                            </View>
+                          ))}
+                        </>
+                      )}
+                      
+                      {/* No tasks message */}
+                      {filteredTasks.length === 0 && (
+                        <Text style={[styles.emptyListText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{t('no_past_tasks', 'Нет прошедших задач')}</Text>
+                      )}
+                    </>
+                  );
+                })()} 
+              </ScrollView>
+            ) : (
+              // Regular task list for Today and Tomorrow tabs
+              <FlatList
+                data={filteredTasks}
+                renderItem={renderItem}
+                keyExtractor={item => item.id}
+                contentContainerStyle={styles.listContent}
+                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -1349,6 +1389,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingTop: 12,
+  },
+  viewModeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 
