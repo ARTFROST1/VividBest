@@ -119,3 +119,15 @@ Preferred communication style: Simple, everyday language.
 - Automated testing pipeline integrated with build process
 
 The application follows modern React Native development practices with a focus on user experience, offline capability, and cross-platform compatibility. The architecture supports both immediate functionality and future scalability through the Supabase backend integration.
+
+## Recent Changes
+
+### July 14, 2025
+- **Migration to Replit**: Successfully migrated project from Replit Agent to standard Replit environment
+- **Calendar Integration**: Added beautiful TaskCalendar component to tasks screen with:
+  - Monthly view with task indicators and progress bars
+  - Priority indicators (colored dots for high priority tasks)
+  - Task count and completion progress for each day
+  - Seamless integration with existing task interface
+  - Toggle button to switch between list and calendar views
+- **UI Improvements**: Updated task screen layout to support full-width segmented controls

@@ -62,7 +62,6 @@ const TasksScreen = () => {
   const [inputVisible, setInputVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTabIndex, setSelectedTabIndex] = useState(1); // Default to 'Today' (middle tab)
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [newTaskDate, setNewTaskDate] = useState(new Date());
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [tagInput, setTagInput] = useState('');
@@ -539,88 +538,47 @@ const TasksScreen = () => {
             />
           </TouchableOpacity>
         </View>
-        {/* Выбор даты - тройной переключатель */}
-        <View style={styles.dateRow}>
-          <View style={styles.segmentedControlContainer}>
-            <View style={[styles.segmentedControl, { backgroundColor: theme.dark ? '#1C1C1E' : '#E9E9EB' }]}>
-              {[t('past', 'Прошлые'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => {
-                const isSelected = index === selectedTabIndex;
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.segmentButton,
-                      index === 0 && styles.leftSegment,
-                      index === 2 && styles.rightSegment,
-                    ]}
-                    onPress={() => handleTabChange({ nativeEvent: { selectedSegmentIndex: index } })}
-                  >
-                    {isSelected ? (
-                      <LinearGradient
-                        colors={['#7745dc', '#f34f8c']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={[styles.selectedSegment, { position: 'absolute', width: '100%', height: '100%' }]}
-                      />
-                    ) : null}
-                    <Text
-                      style={[
-                        styles.segmentButtonText,
-                        {
-                          color: isSelected ? '#FFFFFF' : theme.dark ? '#FFFFFF' : '#000000',
-                          fontWeight: isSelected ? '600' : '400',
-                        },
-                      ]}
-                    >
-                      {value}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            {Platform.OS === 'ios' ? (
-              <DateTimePicker
-                value={selectedDate}
-                mode="date"
-                display="default"
-                themeVariant={theme.dark ? 'dark' : 'light'}
-                onChange={handleDateChange}
-                style={{ width: 140 }}
-              />
-            ) : (
-              <>
+        {/* Выбор даты - тройной переключатель на всю ширину */}
+        <View style={styles.fullWidthSegmentedControl}>
+          <View style={[styles.segmentedControl, { backgroundColor: theme.dark ? '#1C1C1E' : '#E9E9EB' }]}>
+            {[t('past', 'Прошлые'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => {
+              const isSelected = index === selectedTabIndex;
+              return (
                 <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  style={styles.calendarButton}
+                  key={index}
+                  style={[
+                    styles.segmentButton,
+                    styles.fullWidthSegmentButton,
+                    index === 0 && styles.leftSegment,
+                    index === 2 && styles.rightSegment,
+                  ]}
+                  onPress={() => handleTabChange({ nativeEvent: { selectedSegmentIndex: index } })}
                 >
-                  <Icon source="calendar" size={24} color={theme.dark ? '#fff' : '#000'} />
-                  <Text style={styles.selectedDateText}>{formatDate(selectedDate)}</Text>
+                  {isSelected ? (
+                    <LinearGradient
+                      colors={['#7745dc', '#f34f8c']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[styles.selectedSegment, { position: 'absolute', width: '100%', height: '100%' }]}
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.segmentButtonText,
+                      {
+                        color: isSelected ? '#FFFFFF' : theme.dark ? '#FFFFFF' : '#000000',
+                        fontWeight: isSelected ? '600' : '400',
+                      },
+                    ]}
+                  >
+                    {value}
+                  </Text>
                 </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={selectedDate}
-                    mode="date"
-                    display="default"
-                    onChange={(event, date) => {
-                      setShowDatePicker(false);
-                      if (date) handleDateChange(event, date);
-                    }}
-                  />
-                )}
-              </>
-            )}
+              );
+            })}
           </View>
         </View>
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )}
+
         {filteredTasks.length > 0 && (
           <View style={styles.progressContainer}>
             <View
@@ -1408,6 +1366,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  fullWidthSegmentedControl: {
+    marginBottom: 16,
+  },
+  fullWidthSegmentButton: {
+    flex: 1, // Каждая кнопка занимает равную часть ширины
   },
 });
 
