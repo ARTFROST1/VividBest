@@ -62,7 +62,7 @@ const TasksScreen = () => {
   const [inputVisible, setInputVisible] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTabIndex, setSelectedTabIndex] = useState(1); // Default to 'Today' (middle tab)
-  const [newTaskDate, setNewTaskDate] = useState(new Date());
+  const [newTaskDate, setNewTaskDate] = useState(selectedDate);
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -133,6 +133,13 @@ const TasksScreen = () => {
   useEffect(() => {
     AsyncStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  // Синхронизируем newTaskDate с selectedDate для быстрого ввода
+  useEffect(() => {
+    if (!showCalendarModal) {
+      setNewTaskDate(selectedDate);
+    }
+  }, [selectedDate, showCalendarModal]);
 
   // Get tasks based on selected tab
   const getFilteredTasks = () => {
@@ -255,11 +262,12 @@ const TasksScreen = () => {
       if (reminderTime && sendNotification) {
         const hasPerm = await ensureNotificationPermission();
         if (hasPerm) {
+          const taskDate = inputVisible ? selectedDate : newTaskDate;
           notificationId = await scheduleTaskNotification({
             id: '',
             title: newTask.trim(),
             completed: false,
-            dueDate: formatDate(newTaskDate),
+            dueDate: formatDate(taskDate),
             priority,
             tags: selectedTagIds.map(id => allTags.find(t => t.id === id)?.name || ''),
             repeatInterval,
@@ -268,12 +276,15 @@ const TasksScreen = () => {
           });
         }
       }
+      // Используем текущую дату для задач, создаваемых в режиме быстрого ввода
+      const taskDate = inputVisible ? selectedDate : newTaskDate;
+      
       setTasks(prev => [
         {
           id: Date.now().toString(),
           title: newTask.trim(),
           completed: false,
-          dueDate: formatDate(newTaskDate),
+          dueDate: formatDate(taskDate),
           priority,
           tags: selectedTagIds.map(id => allTags.find(t => t.id === id)?.name || ''),
           repeatInterval,
@@ -284,13 +295,14 @@ const TasksScreen = () => {
       ]);
       setNewTask('');
       setInputVisible(false);
-      setNewTaskDate(selectedDate);
+      setNewTaskDate(selectedDate); // Сброс на текущую выбранную дату
       setPriority('medium');
       setPrioritySelected(false);
       setSelectedTagIds([]);
       setRepeatInterval('none');
       setRepeatSelected(false);
       setReminderTime(undefined);
+      setSendNotification(true);
     }
   };
 
