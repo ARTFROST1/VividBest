@@ -97,6 +97,8 @@ const TasksScreen = () => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showCustomTimePicker, setShowCustomTimePicker] = useState(false);
+  const [showDateFilterModal, setShowDateFilterModal] = useState(false);
+  const [selectedFilterDate, setSelectedFilterDate] = useState<Date | null>(null);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -134,6 +136,21 @@ const TasksScreen = () => {
 
   // Get tasks based on selected tab
   const getFilteredTasks = () => {
+    // Если выбрана конкретная дата через календарь
+    if (selectedFilterDate) {
+      return tasks
+        .filter(task => task.dueDate === formatDate(selectedFilterDate))
+        .sort((a, b) => {
+          // Сначала невыполненные, потом выполненные
+          if (a.completed !== b.completed) {
+            return a.completed ? 1 : -1;
+          }
+          // Внутри групп — по приоритету
+          const order = { high: 2, medium: 1, low: 0 };
+          return order[b.priority] - order[a.priority];
+        });
+    }
+    
     // For Past tab (index 0), show tasks grouped by date
     if (selectedTabIndex === 0) {
       return tasks.filter(task => {
@@ -530,25 +547,48 @@ const TasksScreen = () => {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Заголовок с кнопкой переключения режима */}
+        {/* Заголовок с кнопкой выбора даты */}
         <View style={styles.headerRow}>
           <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
           <TouchableOpacity
-            style={[styles.viewModeButton, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}
-            onPress={() => setViewMode(viewMode === 'list' ? 'calendar' : 'list')}
+            style={[
+              styles.dateFilterButton, 
+              { 
+                backgroundColor: selectedFilterDate 
+                  ? 'transparent' 
+                  : theme.dark ? '#1C1C1E' : '#FFFFFF' 
+              }
+            ]}
+            onPress={() => setShowDateFilterModal(true)}
           >
-            <Icon 
-              source={viewMode === 'list' ? 'calendar' : 'format-list-bulleted'} 
-              size={20} 
-              color={theme.dark ? '#FFFFFF' : '#000000'} 
-            />
+            {selectedFilterDate ? (
+              <LinearGradient
+                colors={['#7745dc', '#f34f8c']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.dateFilterGradient}
+              >
+                <Text style={styles.dateFilterText}>
+                  {selectedFilterDate.toLocaleDateString('ru-RU', { 
+                    day: 'numeric', 
+                    month: 'short' 
+                  })}
+                </Text>
+              </LinearGradient>
+            ) : (
+              <Icon 
+                source="calendar" 
+                size={20} 
+                color={theme.dark ? '#FFFFFF' : '#000000'} 
+              />
+            )}
           </TouchableOpacity>
         </View>
         {/* Выбор даты - тройной переключатель на всю ширину */}
         <View style={styles.fullWidthSegmentedControl}>
           <View style={[styles.segmentedControl, { backgroundColor: theme.dark ? '#1C1C1E' : '#E9E9EB' }]}>
             {[t('past', 'Прошлые'), t('today', 'Сегодня'), t('tomorrow', 'Завтра')].map((value, index) => {
-              const isSelected = index === selectedTabIndex;
+              const isSelected = index === selectedTabIndex && !selectedFilterDate;
               return (
                 <TouchableOpacity
                   key={index}
@@ -558,7 +598,10 @@ const TasksScreen = () => {
                     index === 0 && styles.leftSegment,
                     index === 2 && styles.rightSegment,
                   ]}
-                  onPress={() => handleTabChange({ nativeEvent: { selectedSegmentIndex: index } })}
+                  onPress={() => {
+                    setSelectedFilterDate(null);
+                    handleTabChange({ nativeEvent: { selectedSegmentIndex: index } });
+                  }}
                 >
                   {isSelected ? (
                     <LinearGradient
@@ -616,7 +659,7 @@ const TasksScreen = () => {
             <Text style={[styles.progressText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>{Math.round(progress * 100)}% {t('completed', 'выполнено')}</Text>
           </View>
         )}
-        {selectedTabIndex !== 0 && (
+        {selectedTabIndex !== 0 && !selectedFilterDate && (
           <View style={styles.inputContainer}>
             <View style={styles.inputRow}>
               <TextInput
@@ -1194,6 +1237,64 @@ const TasksScreen = () => {
                   Отмена
                 </Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Модальное окно выбора даты для фильтрации */}
+      <Modal visible={showDateFilterModal} transparent animationType="fade" onRequestClose={() => setShowDateFilterModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.dateFilterModalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.dateFilterModalHeader}>
+              <Text style={[styles.dateFilterModalTitle, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>
+                Выберите дату
+              </Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDateFilterModal(false)}
+              >
+                <Icon source="close" size={24} color={theme.dark ? '#FFFFFF' : '#000000'} />
+              </TouchableOpacity>
+            </View>
+            
+            <TaskCalendar
+              tasks={tasks}
+              selectedDate={selectedFilterDate || new Date()}
+              onDateSelect={(date) => {
+                setSelectedFilterDate(date);
+              }}
+              onTaskPress={() => {}}
+            />
+            
+            <View style={styles.dateFilterModalActions}>
+              <TouchableOpacity
+                style={[styles.dateFilterClearButton, { borderColor: theme.dark ? '#636366' : '#E5E5EA' }]}
+                onPress={() => {
+                  setSelectedFilterDate(null);
+                  setShowDateFilterModal(false);
+                }}
+              >
+                <Text style={[styles.dateFilterClearText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>
+                  Сбросить
+                </Text>
+              </TouchableOpacity>
+              
+              <LinearGradient
+                colors={['#7745dc', '#f34f8c']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.dateFilterSelectButton}
+              >
+                <TouchableOpacity
+                  style={styles.dateFilterSelectButtonContent}
+                  onPress={() => {
+                    setShowDateFilterModal(false);
+                  }}
+                >
+                  <Text style={styles.dateFilterSelectText}>Выбрать</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           </View>
         </View>
@@ -1953,6 +2054,83 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nativeTimeOkText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Стили для кнопки выбора даты
+  dateFilterButton: {
+    minWidth: 40,
+    minHeight: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateFilterGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  dateFilterText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Стили для модального окна фильтрации по дате
+  dateFilterModalContent: {
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dateFilterModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  dateFilterModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  dateFilterModalActions: {
+    flexDirection: 'row',
+    marginTop: 20,
+    gap: 12,
+  },
+  dateFilterClearButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  dateFilterClearText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  dateFilterSelectButton: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  dateFilterSelectButtonContent: {
+    padding: 14,
+    alignItems: 'center',
+  },
+  dateFilterSelectText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

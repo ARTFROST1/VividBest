@@ -139,3 +139,9 @@ The application follows modern React Native development practices with a focus o
   - Smart time picker with preset options and custom time selection
   - Scroll support for the main interface
   - Enhanced modal windows with contemporary styling
+- **Calendar Date Filter**: Added modal calendar for date filtering with:
+  - Calendar icon in header that transforms to gradient date display when selected
+  - Modal calendar window with TaskCalendar integration
+  - "Select" and "Reset" buttons for date filtering
+  - Automatic deactivation of Past/Today/Tomorrow buttons when date filter active
+  - Beautiful gradient styling for selected date indicator
