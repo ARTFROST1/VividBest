@@ -95,6 +95,7 @@ const TasksScreen = () => {
   const [showNewTaskDatePicker, setShowNewTaskDatePicker] = useState(false);
   const [showNewTaskTimePicker, setShowNewTaskTimePicker] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -523,7 +524,11 @@ const TasksScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
-      <View style={[styles.container, { backgroundColor: theme.dark ? '#000000' : '#F2F2F7' }]}>
+      <ScrollView 
+        style={[styles.container, { backgroundColor: theme.dark ? '#000000' : '#F2F2F7' }]}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Заголовок с кнопкой переключения режима */}
         <View style={styles.headerRow}>
           <Text style={[styles.header, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>{t('daily_tasks', 'Мой поток задач')}</Text>
@@ -667,7 +672,7 @@ const TasksScreen = () => {
               </View>
               <TouchableOpacity
                 style={[styles.modernButton, { backgroundColor: theme.dark ? '#2C2C2E' : '#F8F9FA' }]}
-                onPress={() => setShowNewTaskDatePicker(true)}
+                onPress={() => setShowCalendarModal(true)}
               >
                 <Text style={[styles.modernButtonText, { color: '#8a44da' }]}>
                   {newTaskDate.toLocaleDateString('ru-RU', { 
@@ -678,17 +683,6 @@ const TasksScreen = () => {
                 </Text>
                 <Icon source="chevron-right" size={20} color="#8a44da" />
               </TouchableOpacity>
-              {showNewTaskDatePicker && (
-                <DateTimePicker
-                  value={newTaskDate}
-                  mode="date"
-                  display="default"
-                  onChange={(event, date) => {
-                    setShowNewTaskDatePicker(false);
-                    if (date) setNewTaskDate(date);
-                  }}
-                />
-              )}
             </View>
 
             {/* Приоритет */}
@@ -850,17 +844,62 @@ const TasksScreen = () => {
           </Animated.View>
         )}
         
-        {/* Модальные окна для выбора повторений */}
+        {/* Модальное окно повторений в современном стиле */}
         <Modal visible={showRepeatModal} transparent animationType="fade" onRequestClose={() => setShowRepeatModal(false)}>
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF', borderRadius: 14 }]}>
-              {(['none', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((interval) => (
-                <TouchableOpacity key={interval} onPress={() => { setRepeatInterval(interval as any); setRepeatSelected(true); setShowRepeatModal(false); }} style={styles.modalOption}>
-                  <Text style={{ color: theme.dark ? '#FFFFFF' : '#000000', fontSize: 17, fontWeight: '400' }}>{REPEAT_LABELS[interval]}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity onPress={() => setShowRepeatModal(false)} style={styles.modalOption}>
-                <Text style={{ color: '#FF3B30', fontSize: 17, fontWeight: '600' }}>{t('cancel', 'Отмена')}</Text>
+            <View style={[styles.repeatModalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}>
+              <View style={styles.repeatModalHeader}>
+                <Text style={[styles.repeatModalTitle, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>
+                  Повторение задачи
+                </Text>
+              </View>
+              <View style={styles.repeatOptionsContainer}>
+                {(['none', 'daily', 'weekly', 'monthly', 'yearly'] as const).map((interval) => (
+                  <TouchableOpacity 
+                    key={interval} 
+                    style={[
+                      styles.repeatOption,
+                      {
+                        backgroundColor: repeatInterval === interval 
+                          ? '#8a44da20' 
+                          : theme.dark ? '#2C2C2E' : '#F8F9FA',
+                        borderColor: repeatInterval === interval 
+                          ? '#8a44da' 
+                          : theme.dark ? '#3C3C3E' : '#E5E5EA',
+                      }
+                    ]}
+                    onPress={() => { 
+                      setRepeatInterval(interval as any); 
+                      setRepeatSelected(true); 
+                      setShowRepeatModal(false); 
+                    }}
+                  >
+                    <View style={styles.repeatOptionContent}>
+                      <Text style={[
+                        styles.repeatOptionText,
+                        { 
+                          color: repeatInterval === interval 
+                            ? '#8a44da' 
+                            : theme.dark ? '#FFFFFF' : '#000000',
+                          fontWeight: repeatInterval === interval ? '600' : '400',
+                        }
+                      ]}>
+                        {REPEAT_LABELS[interval]}
+                      </Text>
+                      {repeatInterval === interval && (
+                        <Icon source="check" size={20} color="#8a44da" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity 
+                style={[styles.repeatModalCancelButton, { borderColor: theme.dark ? '#636366' : '#E5E5EA' }]}
+                onPress={() => setShowRepeatModal(false)}
+              >
+                <Text style={[styles.repeatModalCancelText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>
+                  Отмена
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -969,7 +1008,107 @@ const TasksScreen = () => {
             )}
           </>
         )}
-      </View>
+      </ScrollView>
+      
+      {/* Модальный календарь */}
+      <Modal visible={showCalendarModal} transparent animationType="fade" onRequestClose={() => setShowCalendarModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.calendarModalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.calendarModalHeader}>
+              <Text style={[styles.calendarModalTitle, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>
+                Выберите дату
+              </Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowCalendarModal(false)}
+              >
+                <Icon source="close" size={24} color={theme.dark ? '#FFFFFF' : '#000000'} />
+              </TouchableOpacity>
+            </View>
+            <TaskCalendar
+              tasks={tasks}
+              selectedDate={newTaskDate}
+              onDateSelect={(date) => {
+                setNewTaskDate(date);
+                setShowCalendarModal(false);
+              }}
+              onTaskPress={() => {}}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Модальное окно времени */}
+      <Modal visible={showNewTaskTimePicker} transparent animationType="fade" onRequestClose={() => setShowNewTaskTimePicker(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.timeModalContent, { backgroundColor: theme.dark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.timeModalHeader}>
+              <Text style={[styles.timeModalTitle, { color: theme.dark ? '#FFFFFF' : '#000000' }]}>
+                Время напоминания
+              </Text>
+            </View>
+            <View style={styles.timePickerContainer}>
+              {/* Создаем простой выбор времени */}
+              <View style={styles.timeGrid}>
+                {['09:00', '12:00', '15:00', '18:00', '20:00', '21:00'].map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={[
+                      styles.timeOption,
+                      {
+                        backgroundColor: reminderTime === time 
+                          ? '#8a44da' 
+                          : theme.dark ? '#2C2C2E' : '#F8F9FA',
+                        borderColor: reminderTime === time 
+                          ? '#8a44da' 
+                          : theme.dark ? '#3C3C3E' : '#E5E5EA',
+                      }
+                    ]}
+                    onPress={() => {
+                      setReminderTime(time);
+                      setShowNewTaskTimePicker(false);
+                    }}
+                  >
+                    <Text style={[
+                      styles.timeOptionText,
+                      {
+                        color: reminderTime === time 
+                          ? '#FFFFFF' 
+                          : theme.dark ? '#FFFFFF' : '#000000',
+                      }
+                    ]}>
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={[styles.customTimeButton, { backgroundColor: theme.dark ? '#2C2C2E' : '#F8F9FA' }]}
+                onPress={() => {
+                  setShowNewTaskTimePicker(false);
+                  setTimeout(() => setShowNewTaskDatePicker(true), 100);
+                }}
+              >
+                <Icon source="clock-edit" size={20} color="#8a44da" />
+                <Text style={[styles.customTimeText, { color: '#8a44da' }]}>
+                  Другое время
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.timeModalButtons}>
+              <TouchableOpacity
+                style={[styles.timeModalCancelButton, { borderColor: theme.dark ? '#636366' : '#E5E5EA' }]}
+                onPress={() => setShowNewTaskTimePicker(false)}
+              >
+                <Text style={[styles.timeModalCancelText, { color: theme.dark ? '#8E8E93' : '#8E8E93' }]}>
+                  Отмена
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
     </KeyboardAvoidingView>
   );
 };
@@ -1473,6 +1612,144 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Стили для модальных окон
+  calendarModalContent: {
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  calendarModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  calendarModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  timeModalContent: {
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  timeModalHeader: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  timeModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  timePickerContainer: {
+    marginBottom: 20,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  timeOption: {
+    width: '30%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  customTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  customTimeText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  timeModalButtons: {
+    flexDirection: 'row',
+  },
+  timeModalCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  timeModalCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  repeatModalContent: {
+    margin: 20,
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  repeatModalHeader: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  repeatModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  repeatOptionsContainer: {
+    marginBottom: 20,
+  },
+  repeatOption: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 8,
+  },
+  repeatOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  repeatOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  repeatModalCancelButton: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  repeatModalCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 
