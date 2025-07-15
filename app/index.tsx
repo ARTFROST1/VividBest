@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { PaperProvider } from 'react-native-paper';
 import { lightTheme, darkTheme } from '../src/theme/theme';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, View, AppState, AppStateStatus, Platform, NativeEventEmitter, NativeModules } from 'react-native';
+import { useColorScheme, View, AppState, AppStateStatus, Platform } from 'react-native';
 import RootNavigator from '../src/navigation/RootNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeToggleContext } from '../src/context/ThemeToggleContext';
@@ -12,11 +12,11 @@ import i18n from '../src/locales/i18n';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider } from '../src/context/AuthContext';
 
-// Debug helper – сохраняет последний console.log, чтобы увидеть его в logcat
+// Debug helper
 if (__DEV__) {
   const origLog = console.log;
   console.log = (...args: any[]) => {
-    // @ts-ignore – кладём в global, чтобы native мог напечатать
+    // @ts-ignore
     global.lastLog = JSON.stringify(args, null, 2);
     origLog(...args);
   };
@@ -28,12 +28,6 @@ const ThemedSafeArea = ({ isDark, children }: { isDark: boolean; children: React
   const statusBarStyle = isDark ? 'light' : 'dark';
   const backgroundColor = isDark ? '#000000' : '#f3f2f8';
   
-  // Force immediate update of status bar style
-  useEffect(() => {
-    // We'll just rely on the StatusBar component's props for updates
-    // as setStatusBarStyle is not available in expo-status-bar
-  }, [isDark, statusBarStyle]);
-
   return (
     <View style={{
       flex: 1,
@@ -55,9 +49,8 @@ export default function AppLayout() {
   const appState = useRef(AppState.currentState);
   const themeUpdateTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   
-  // Handle theme updates in a way that ensures proper iOS rendering
+  // Handle theme updates
   const updateTheme = useCallback((newIsDark: boolean) => {
-    // Clear any pending updates
     if (themeUpdateTimeout.current) {
       clearTimeout(themeUpdateTimeout.current);
     }
@@ -65,9 +58,8 @@ export default function AppLayout() {
     setIsDark(newIsDark);
     
     if (Platform.OS === 'ios') {
-      // Force a re-render after a short delay to ensure iOS updates properly
       themeUpdateTimeout.current = setTimeout(() => {
-        setIsDark(current => current); // Force re-render
+        setIsDark(current => current);
       }, 50);
     }
   }, []);
@@ -76,7 +68,6 @@ export default function AppLayout() {
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        // Force theme update when app comes to foreground
         updateTheme(isDark);
       }
       appState.current = nextAppState;

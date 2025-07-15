@@ -1,0 +1,67 @@
+PS C:\Users\moroz\Desktop\VividBest> npx expo start
+Starting project at C:\Users\moroz\Desktop\VividBest
+Starting Metro Bundler
+The following packages should be updated for best compatibility with the installed expo version:
+  @react-native-async-storage/async-storage@2.2.0 - expected version: 2.1.2
+  @react-native-community/datetimepicker@8.4.2 - expected version: 8.4.1
+  react@19.1.0 - expected version: 19.0.0
+  react-dom@19.1.0 - expected version: 19.0.0
+  react-native-safe-area-context@5.5.2 - expected version: 5.4.0
+  react-native-svg@15.12.0 - expected version: 15.11.2
+  react-native-webview@13.15.0 - expected version: 13.13.5
+Your project may not work correctly until you install the expected versions of the packages.
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+█ ▄▄▄▄▄ █▄▄▄ ▀ ██ █ ▄▄▄▄▄ █
+█ █   █ ██▄▀ █  ▄▄█ █   █ █
+█ █▄▄▄█ ██▀▄ ▄▀▀█▀█ █▄▄▄█ █
+█▄▄▄▄▄▄▄█ ▀▄█ ▀▄▀ █▄▄▄▄▄▄▄█
+█  ▀ ▄▀▄██▄▀█▄▀█▀ █▄█▀█▀▀▄█
+█ █████▄▀ ▄██▄▄▄▄▀▀███▄▀▀ █
+█▀▄█▄ ▄▄ █  █▀█▄ █ ▄▀▀█▀ ██
+█ ▄█▀▄ ▄▄█▀▀█▀▄▀ ▄▀ ██▄▀  █
+█▄█▄█▄█▄█▀█▀ ▄▄ █ ▄▄▄  ▄▀▄█
+█ ▄▄▄▄▄ ██▀▄▀▄  █ █▄█ ███ █
+█ █   █ █ ▀█▄ ▀█▄ ▄  ▄ █▀▀█
+█ █▄▄▄█ █▀ ▀ ▀█▄ ▄█▀▀▄█   █
+█▄▄▄▄▄▄▄█▄█▄▄██▄▄▄▄█▄▄███▄█
+
+› Metro waiting on exp://192.168.0.157:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
+
+› Web is waiting on http://localhost:8081
+
+› Using Expo Go
+› Press s │ switch to development build
+
+› Press a │ open Android
+› Press w │ open web
+
+› Press j │ open debugger
+› Press r │ reload app
+› Press m │ toggle menu
+› shift+m │ more tools
+› Press o │ open project code in your editor
+
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+› Opening on Android...
+› Opening exp://192.168.0.157:8081 on TECNO_KL7
+› Press ? │ show all commands
+Android Bundled 1301ms node_modules\expo-router\entry.js (1848 modules)
+ WARN  Route "./index.tsx" is missing the required default export. Ensure a React component is exported as default.
+ ERROR  Warning: Error: Incompatible React versions: The "react" and "react-native-renderer" packages must have the exact same version. Instead got:
+  - react:                  19.1.0
+  - react-native-renderer:  19.0.0
+Learn more: https://react.dev/warnings/version-mismatch, js engine: hermes
+
+Call Stack
+  App (<anonymous>)
+  ErrorOverlay (<anonymous>)
+ ERROR  Warning: Invalid prop `style` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+
+Call Stack
+  DefaultNavigator(expo-router/build/views/Navigator.js) (<anonymous>)
+  RNCSafeAreaProvider (<anonymous>)
+  App (<anonymous>)
+  ErrorOverlay (<anonymous>)
