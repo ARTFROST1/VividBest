@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, StatusBar, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, StatusBar, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { TextInput, Appbar, IconButton, useTheme, Text, Surface } from 'react-native-paper';
 import { saveNoteLocal, loadNoteLocal, NoteData } from '../services/notesService';
 import notesEventBus from '../utils/notesEventBus';
-import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { uploadNoteImage } from '../services/notesService';
 import { fetchLinkPreview } from '../utils/linkPreview';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RichTextEditor } from '../components/RichTextEditor';
+import { AppleNotesToolbar } from '../components/AppleNotesToolbar';
 import MediaAttachment from '../components/MediaAttachment';
 import { ResizableImage } from '../components/ResizableImage';
-import { AppleNotesToolbar } from '../components/ModernToolbar';
+import { AudioPlayer } from '../components/AudioPlayer';
 
 const formattingButtons = [
   { icon: 'format-bold', markdown: '**', tooltip: 'Жирный' },
@@ -41,9 +43,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [showToolbar, setShowToolbar] = useState(false);
-  const [showMediaOptions, setShowMediaOptions] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<Set<string>>(new Set());
-  const [currentStyle, setCurrentStyle] = useState<'body' | 'title' | 'heading' | 'subheading'>('body');
   const [mediaAttachments, setMediaAttachments] = useState<Array<{
     id: string;
     uri: string;
@@ -51,7 +51,82 @@ export default function NoteEditorScreen({ route, navigation }) {
     height: number;
     x: number;
     y: number;
+    type: 'image' | 'audio';
+    name?: string;
+    duration?: number;
   }>>([]);
+  const [audioFiles, setAudioFiles] = useState<Array<{
+    id: string;
+    uri: string;
+    name: string;
+    duration?: number;
+  }>>([]);
+
+
+
+  // Обработка медиа
+  const handleImagePicker = useCallback(async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Разрешение', 'Нужно разрешение для доступа к галерее');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAttachment = {
+          id: `img_${Date.now()}`,
+          uri: asset.uri,
+          width: asset.width || 300,
+          height: asset.height || 200,
+          x: 0,
+          y: 0,
+          type: 'image' as const,
+        };
+        
+        setMediaAttachments(prev => [...prev, newAttachment]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Ошибка', 'Не удалось выбрать изображение');
+    }
+  }, []);
+
+  const handleAudioPicker = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const newAudio = {
+          id: `audio_${Date.now()}`,
+          uri: asset.uri,
+          name: asset.name,
+          duration: 0, // Получим позже из метаданных
+        };
+        
+        setAudioFiles(prev => [...prev, newAudio]);
+      }
+    } catch (error) {
+      console.error('Error picking audio:', error);
+      Alert.alert('Ошибка', 'Не удалось выбрать аудиофайл');
+    }
+  }, []);
+
+  const handleAudioDeleted = useCallback((audioId: string) => {
+    setAudioFiles(prev => prev.filter(audio => audio.id !== audioId));
+  }, []);
 
   console.log('NoteEditorScreen route.params', route?.params);
 
@@ -235,7 +310,7 @@ export default function NoteEditorScreen({ route, navigation }) {
       }
     } else {
       // Android с TextInput - используем Markdown
-      handleFormat(getMarkdownForAction(action, value));
+      handleMarkdownFormat(getMarkdownForAction(action, value));
     }
   };
 
@@ -263,8 +338,8 @@ export default function NoteEditorScreen({ route, navigation }) {
     }
   };
 
-  // Вставка Markdown-разметки (оставляем для совместимости)
-  const handleFormat = (markdown: string) => {
+  // Вставка Markdown-разметки (для совместимости с Android)
+  const handleMarkdownFormat = (markdown: string) => {
     // Для Android вставляем/оборачиваем выбранный текст маркдаун-токеном
     if (Platform.OS === 'android') {
       setContent(prev => {
@@ -514,18 +589,12 @@ export default function NoteEditorScreen({ route, navigation }) {
               onFocus={() => setShowToolbar(true)}
             />
           ) : (
-            <TextInput
+            <RichTextEditor
               value={content}
               onChangeText={setContent}
-              selection={selection}
-              onSelectionChange={(e)=>setSelection(e.nativeEvent.selection)}
               placeholder={t('note_text_placeholder', 'Текст заметки...')}
-              multiline
-              style={[styles.androidEditor, { color: c.text }]}
-              textAlignVertical="top"
-              underlineColor="transparent"
-              theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
               onFocus={() => setShowToolbar(true)}
+              style={[styles.androidEditor, { color: c.text }]}
             />
           )}
           
@@ -557,6 +626,44 @@ export default function NoteEditorScreen({ route, navigation }) {
           )}
         </View>
         
+        {/* Audio Files */}
+        {audioFiles.length > 0 && (
+          <View style={styles.audioSection}>
+            <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+              Аудиофайлы
+            </Text>
+            {audioFiles.map((audio) => (
+              <AudioPlayer
+                key={audio.id}
+                uri={audio.uri}
+                name={audio.name}
+                duration={audio.duration}
+                onDelete={() => handleAudioDeleted(audio.id)}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Media Attachments for Android */}
+        {Platform.OS === 'android' && mediaAttachments.length > 0 && (
+          <View style={styles.imageSection}>
+            <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+              Изображения
+            </Text>
+            {mediaAttachments.map((attachment) => (
+              <ResizableImage
+                key={attachment.id}
+                uri={attachment.uri}
+                initialWidth={attachment.width}
+                initialHeight={attachment.height}
+                onDelete={() => handleImageDeleted(attachment.id)}
+                onResize={(w, h) => handleImageResized(attachment.id, w, h)}
+                onMove={(x, y) => handleImageMoved(attachment.id, x, y)}
+              />
+            ))}
+          </View>
+        )}
+
         {/* Media Options */}
         {showMediaOptions && (
           <MediaAttachment
@@ -577,9 +684,9 @@ export default function NoteEditorScreen({ route, navigation }) {
         >
           <AppleNotesToolbar
             onFormat={handleAppleNotesFormat}
-            onImagePicker={() => setShowMediaOptions(!showMediaOptions)}
+            onImagePicker={handleImagePicker}
+            onAudioPicker={handleAudioPicker}
             visible={showToolbar}
-            isDarkMode={dark}
             selectedFormats={selectedFormats}
           />
         </KeyboardAvoidingView>
@@ -650,6 +757,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 5,
     pointerEvents: 'box-none',
+  },
+  audioSection: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  imageSection: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
   },
 
   editor: {
