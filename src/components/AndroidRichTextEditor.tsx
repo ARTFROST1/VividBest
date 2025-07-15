@@ -227,7 +227,7 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
             styles.textInput,
             { 
               color: colors.onSurface,
-              minHeight: Platform.OS === 'android' ? 400 : 300,
+              minHeight: 400,
             }
           ]}
           value={value}
@@ -244,7 +244,7 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
       </Surface>
       
       {/* Android Keyboard-Aware Toolbar */}
-      {Platform.OS === 'android' && focused && (
+      {focused && (
         <View style={styles.keyboardAvoidingView}>
           <Surface style={[styles.androidToolbar, { backgroundColor: colors.surfaceVariant }]}>
             {/* Первая строка - основное форматирование */}
@@ -259,7 +259,7 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
               >
                 <MaterialCommunityIcons 
                   name="format-bold" 
-                  size={18} 
+                  size={20} 
                   color={isFormatActive('bold') ? colors.primary : colors.onSurface} 
                 />
               </TouchableOpacity>
@@ -274,7 +274,7 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
               >
                 <MaterialCommunityIcons 
                   name="format-italic" 
-                  size={18} 
+                  size={20} 
                   color={isFormatActive('italic') ? colors.primary : colors.onSurface} 
                 />
               </TouchableOpacity>
@@ -289,7 +289,7 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
               >
                 <MaterialCommunityIcons 
                   name="format-underline" 
-                  size={18} 
+                  size={20} 
                   color={isFormatActive('underline') ? colors.primary : colors.onSurface} 
                 />
               </TouchableOpacity>
@@ -298,21 +298,21 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={() => applyFormat('strikethrough')}
               >
-                <MaterialCommunityIcons name="format-strikethrough" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="format-strikethrough" size={20} color={colors.onSurface} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertBulletList}
               >
-                <MaterialCommunityIcons name="format-list-bulleted" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="format-list-bulleted" size={20} color={colors.onSurface} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertNumberedList}
               >
-                <MaterialCommunityIcons name="format-list-numbered" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="format-list-numbered" size={20} color={colors.onSurface} />
               </TouchableOpacity>
             </View>
 
@@ -322,28 +322,28 @@ const AndroidRichTextEditor = forwardRef<AndroidEditorRef, AndroidRichTextEditor
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertCheckbox}
               >
-                <MaterialCommunityIcons name="checkbox-marked-outline" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="checkbox-marked-outline" size={20} color={colors.onSurface} />
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertImage}
               >
-                <MaterialCommunityIcons name="image" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="image" size={20} color={colors.onSurface} />
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertTable}
               >
-                <MaterialCommunityIcons name="table" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="table" size={20} color={colors.onSurface} />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.androidToolButton, { borderColor: colors.outline }]}
                 onPress={insertLink}
               >
-                <MaterialCommunityIcons name="link" size={18} color={colors.onSurface} />
+                <MaterialCommunityIcons name="link" size={20} color={colors.onSurface} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -399,32 +399,36 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   androidToolbar: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
-    elevation: 4,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: -2,
+      height: -4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   toolbarRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 4,
+    marginVertical: 6,
+    paddingHorizontal: 8,
   },
   androidToolButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 2,
+    marginHorizontal: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   headingButtonText: {
     fontSize: 12,

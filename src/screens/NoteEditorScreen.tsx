@@ -525,7 +525,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             value={content}
             onChangeText={setContent}
             placeholder={t('note_text_placeholder', 'Текст заметки...')}
-            onFocus={() => setShowToolbar(true)}
+            onFocus={() => setShowToolbar(false)} // Android has built-in toolbar
             onBlur={() => setShowToolbar(false)}
             style={styles.editorContainer}
           />
@@ -537,7 +537,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             placeholder={t('note_text_placeholder', 'Текст заметки...')}
             onFocus={() => setShowToolbar(true)}
             onBlur={() => setShowToolbar(false)}
-            showToolbar={showToolbar}
+            showToolbar={false} // Hide built-in toolbar for web, use external
             style={styles.editorContainer}
           />
         ) : (
@@ -548,7 +548,7 @@ export default function NoteEditorScreen({ route, navigation }) {
             placeholder={t('note_text_placeholder', 'Текст заметки...')}
             onFocus={() => setShowToolbar(true)}
             onBlur={() => setShowToolbar(false)}
-            showToolbar={showToolbar}
+            showToolbar={false} // Hide built-in toolbar for iOS, use external
             style={styles.editorContainer}
           />
         )}
