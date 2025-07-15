@@ -798,108 +798,159 @@ const NotesScreen = () => {
     fontSize: 17,
     fontWeight: '600',
   },
-  // Современные модальные окна
+  // Ультра-современное модальное окно
   modernModalOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   modernModalContent: {
-    width: '85%',
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: 24,
+    width: '88%',
+    maxWidth: 380,
+    borderRadius: 28,
+    padding: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 40,
+    elevation: 15,
+    overflow: 'hidden',
+  },
+  modernModalInner: {
+    padding: 28,
   },
   modernModalHeader: {
-    marginBottom: 24,
     alignItems: 'center',
+    marginBottom: 32,
+  },
+  modernModalIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(247, 184, 1, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   modernModalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  modernModalSubtitle: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginTop: 4,
+    opacity: 0.7,
   },
   modernModalSection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  modernModalSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  modernModalSectionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 10,
+  modernModalInputContainer: {
+    position: 'relative',
   },
   modernModalInput: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 0,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 17,
+    fontWeight: '500',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
   },
-  modernModalToggle: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  modernModalInputFocused: {
+    borderColor: '#F7B801',
+    backgroundColor: 'rgba(247, 184, 1, 0.08)',
+  },
+  modernModalToggleContainer: {
     flexDirection: 'row',
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 8,
+  },
+  modernModalToggleOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+  },
+  modernModalToggleActive: {
+    backgroundColor: '#F7B801',
+    shadowColor: '#F7B801',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   modernModalToggleText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(60, 60, 67, 0.6)',
+  },
+  modernModalToggleActiveText: {
+    color: '#FFFFFF',
   },
   modernModalHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
   },
   modernModalHintText: {
-    fontSize: 14,
+    fontSize: 13,
     marginLeft: 8,
-    fontStyle: 'italic',
+    opacity: 0.8,
+    lineHeight: 18,
   },
   modernModalActions: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
   },
   modernModalCancelButton: {
     flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 12,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: 'center',
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
   },
   modernModalCancelText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   modernModalCreateButton: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  modernModalCreateButtonContent: {
-    paddingVertical: 12,
+  modernModalCreateButtonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#F7B801',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   modernModalCreateText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   });
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
@@ -2022,114 +2073,139 @@ const NotesScreen = () => {
             }
           </ScrollView>
         )}
-        {/* Современное модальное окно создания заметки/папки */}
+        {/* Ультра-современное модальное окно создания заметки/папки */}
         <Portal>
           {showDialog && (
             <View style={styles.modernModalOverlay}>
               <View style={[styles.modernModalContent, { backgroundColor: colors.background }]}>
-                {/* Заголовок */}
-                <View style={styles.modernModalHeader}>
-                  <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
-                    {isFolder ? 'Новая папка' : 'Новая заметка'}
-                  </Text>
-                </View>
-
-                {/* Название */}
-                <View style={styles.modernModalSection}>
-                  <View style={styles.modernModalSectionHeader}>
-                    <MaterialCommunityIcons 
-                      name={isFolder ? "folder-outline" : "note-text-outline"} 
-                      size={20} 
-                      color="#F7B801" 
-                    />
-                    <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
-                      Название
-                    </Text>
-                  </View>
-                  <TextInput
-                    placeholder={isFolder ? "Название папки..." : "Название заметки..."}
-                    value={newTitle}
-                    onChangeText={setNewTitle}
-                    autoFocus
-                    style={[styles.modernModalInput, { backgroundColor: colors.surface, color: colors.onSurface }]}
-                    placeholderTextColor={colors.placeholder}
-                  />
-                </View>
-
-                {/* Переключатель типа */}
-                {createMode === 'both' && (
-                  <View style={styles.modernModalSection}>
-                    <View style={styles.modernModalSectionHeader}>
+                <View style={styles.modernModalInner}>
+                  {/* Заголовок с иконкой */}
+                  <View style={styles.modernModalHeader}>
+                    <View style={styles.modernModalIcon}>
                       <MaterialCommunityIcons 
-                        name="swap-horizontal" 
-                        size={20} 
+                        name={isFolder ? "folder-plus-outline" : "note-plus-outline"} 
+                        size={28} 
                         color="#F7B801" 
                       />
-                      <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
-                        Тип
+                    </View>
+                    <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
+                      {isFolder ? 'Новая папка' : 'Новая заметка'}
+                    </Text>
+                    <Text style={[styles.modernModalSubtitle, { color: colors.onBackground }]}>
+                      {isFolder 
+                        ? 'Организуйте свои заметки в папки'
+                        : 'Создайте новую заметку для ваших идей'
+                      }
+                    </Text>
+                  </View>
+
+                  {/* Переключатель типа (если доступны оба режима) */}
+                  {createMode === 'both' && (
+                    <View style={styles.modernModalSection}>
+                      <View style={styles.modernModalToggleContainer}>
+                        <TouchableOpacity 
+                          onPress={() => setIsFolder(false)}
+                          style={[
+                            styles.modernModalToggleOption,
+                            !isFolder && styles.modernModalToggleActive
+                          ]}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[
+                            styles.modernModalToggleText,
+                            !isFolder && styles.modernModalToggleActiveText
+                          ]}>
+                            Заметка
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => setIsFolder(true)}
+                          style={[
+                            styles.modernModalToggleOption,
+                            isFolder && styles.modernModalToggleActive
+                          ]}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[
+                            styles.modernModalToggleText,
+                            isFolder && styles.modernModalToggleActiveText
+                          ]}>
+                            Папка
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Поле ввода названия */}
+                  <View style={styles.modernModalSection}>
+                    <View style={styles.modernModalInputContainer}>
+                      <TextInput
+                        placeholder={isFolder ? "Название папки" : "Название заметки"}
+                        value={newTitle}
+                        onChangeText={setNewTitle}
+                        autoFocus
+                        style={[
+                          styles.modernModalInput,
+                          { color: colors.onSurface },
+                          newTitle.length > 0 && styles.modernModalInputFocused
+                        ]}
+                        placeholderTextColor={colors.outline}
+                        returnKeyType="done"
+                        onSubmitEditing={addNewItem}
+                      />
+                    </View>
+                    
+                    {/* Подсказка */}
+                    <View style={styles.modernModalHint}>
+                      <MaterialCommunityIcons 
+                        name="information-outline" 
+                        size={14} 
+                        color="#34C759" 
+                      />
+                      <Text style={[styles.modernModalHintText, { color: colors.onSurface }]}>
+                        {isFolder 
+                          ? 'Папка поможет организовать заметки по темам'
+                          : 'Заметка автоматически сохраняется при редактировании'
+                        }
                       </Text>
                     </View>
+                  </View>
+
+                  {/* Кнопки действий */}
+                  <View style={styles.modernModalActions}>
                     <TouchableOpacity 
-                      onPress={() => setIsFolder(f => !f)} 
-                      style={[styles.modernModalToggle, { backgroundColor: colors.surface }]}
-                      activeOpacity={0.7}
+                      onPress={() => {
+                        setShowDialog(false);
+                        setNewTitle('');
+                        setIsFolder(false);
+                      }}
+                      style={styles.modernModalCancelButton}
+                      activeOpacity={0.6}
                     >
-                      <Text style={[styles.modernModalToggleText, { color: '#F7B801' }]}>
-                        {isFolder ? 'Создать заметку' : 'Создать папку'}
-                      </Text>
-                      <MaterialCommunityIcons 
-                        name="chevron-right" 
-                        size={20} 
-                        color="#F7B801" 
-                      />
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* Подсказки */}
-                {createMode === 'folder' && (
-                  <View style={styles.modernModalHint}>
-                    <MaterialCommunityIcons name="information-outline" size={16} color={colors.placeholder} />
-                    <Text style={[styles.modernModalHintText, { color: colors.placeholder }]}>
-                      Создается папка в корне
-                    </Text>
-                  </View>
-                )}
-                {createMode === 'note' && (
-                  <View style={styles.modernModalHint}>
-                    <MaterialCommunityIcons name="information-outline" size={16} color={colors.placeholder} />
-                    <Text style={[styles.modernModalHintText, { color: colors.placeholder }]}>
-                      В этой папке можно создать только заметку
-                    </Text>
-                  </View>
-                )}
-
-                {/* Кнопки действий */}
-                <View style={styles.modernModalActions}>
-                  <TouchableOpacity
-                    onPress={() => setShowDialog(false)}
-                    style={[styles.modernModalCancelButton, { borderColor: colors.outline }]}
-                  >
-                    <Text style={[styles.modernModalCancelText, { color: colors.placeholder }]}>
-                      Отмена
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <LinearGradient
-                    colors={['#F7B801', '#F39C12']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.modernModalCreateButton}
-                  >
-                    <TouchableOpacity
-                      onPress={handleAdd}
-                      style={styles.modernModalCreateButtonContent}
-                    >
-                      <Text style={styles.modernModalCreateText}>
-                        Создать
+                      <Text style={styles.modernModalCancelText}>
+                        Отмена
                       </Text>
                     </TouchableOpacity>
-                  </LinearGradient>
+                    
+                    <View style={styles.modernModalCreateButton}>
+                      <LinearGradient
+                        colors={['#F7B801', '#E5A001']}
+                        style={styles.modernModalCreateButtonGradient}
+                      >
+                        <TouchableOpacity 
+                          onPress={addNewItem}
+                          activeOpacity={0.8}
+                          disabled={!newTitle.trim()}
+                          style={{ opacity: newTitle.trim() ? 1 : 0.5 }}
+                        >
+                          <Text style={styles.modernModalCreateText}>
+                            Создать
+                          </Text>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                    </View>
+                  </View>
                 </View>
               </View>
             </View>
