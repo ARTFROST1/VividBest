@@ -125,6 +125,8 @@ The application follows modern React Native development practices with a focus o
 ### July 15, 2025
 - **Local Development Setup**: Fixed compatibility issues with Node.js 17+ and updated to use new local Expo CLI instead of deprecated global version
 - **Dependencies Update**: Resolved version conflicts between installed packages and Expo SDK 53 requirements
+- **React Version Fix**: Downgraded React from 19.1.0 to 19.0.0 to match react-native-renderer and resolve compatibility issues
+- **Expo Router Fix**: Corrected app/index.tsx structure to work properly with expo-router entry system
 - **Migration Complete**: Successfully migrated from Replit Agent to standard Replit environment
 - **Platform-Specific Editors**: Created dedicated AndroidRichTextEditor for Android optimization with keyboard-aware toolbar that sticks to the keyboard
 - **Advanced Android Toolbar**: Implemented two-row toolbar with formatting (Bold, Italic, Underline, Strikethrough, Lists) and media tools (Checkbox, Image, Table, Link, Headings)
