@@ -5,107 +5,143 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Animated,
 } from 'react-native';
 import { Surface, IconButton, useTheme, Text } from 'react-native-paper';
-import * as ImagePicker from 'expo-image-picker';
 
-interface ModernToolbarProps {
+interface AppleNotesToolbarProps {
   onFormat: (action: string, value?: any) => void;
   onImagePicker: () => void;
   visible: boolean;
   isDarkMode: boolean;
+  selectedFormats: Set<string>;
 }
 
-interface ToolbarAction {
+interface ToolbarButton {
   id: string;
   icon: string;
-  label: string;
-  category: 'formatting' | 'list' | 'insert' | 'media';
   action: string;
   value?: any;
+  category: 'title' | 'format' | 'list' | 'insert';
 }
 
-const toolbarActions: ToolbarAction[] = [
-  // Formatting
-  { id: 'bold', icon: 'format-bold', label: 'Жирный', category: 'formatting', action: 'bold' },
-  { id: 'italic', icon: 'format-italic', label: 'Курсив', category: 'formatting', action: 'italic' },
-  { id: 'underline', icon: 'format-underline', label: 'Подчеркнутый', category: 'formatting', action: 'underline' },
-  { id: 'strikethrough', icon: 'format-strikethrough', label: 'Зачеркнутый', category: 'formatting', action: 'strikethrough' },
+// Минималистичные кнопки в стиле Apple Notes
+const toolbarButtons: ToolbarButton[] = [
+  // Title styles - первая секция
+  { id: 'title', icon: 'format-header-1', action: 'title', category: 'title' },
+  { id: 'heading', icon: 'format-header-2', action: 'heading', category: 'title' },
+  { id: 'subheading', icon: 'format-header-3', action: 'subheading', category: 'title' },
   
-  // Lists
-  { id: 'bulletList', icon: 'format-list-bulleted', label: 'Маркированный список', category: 'list', action: 'bulletList' },
-  { id: 'numberList', icon: 'format-list-numbered', label: 'Нумерованный список', category: 'list', action: 'numberList' },
-  { id: 'checklist', icon: 'checkbox-marked-outline', label: 'Чеклист', category: 'list', action: 'checklist' },
+  // Text formatting - вторая секция
+  { id: 'bold', icon: 'format-bold', action: 'bold', category: 'format' },
+  { id: 'italic', icon: 'format-italic', action: 'italic', category: 'format' },
+  { id: 'underline', icon: 'format-underline', action: 'underline', category: 'format' },
+  { id: 'strikethrough', icon: 'format-strikethrough', action: 'strikethrough', category: 'format' },
   
-  // Insert
-  { id: 'blockquote', icon: 'format-quote-close', label: 'Цитата', category: 'insert', action: 'blockquote' },
-  { id: 'code', icon: 'code-tags', label: 'Код', category: 'insert', action: 'code' },
-  { id: 'link', icon: 'link', label: 'Ссылка', category: 'insert', action: 'link' },
-  { id: 'table', icon: 'table', label: 'Таблица', category: 'insert', action: 'table' },
+  // Lists - третья секция
+  { id: 'bulletList', icon: 'format-list-bulleted', action: 'bulletList', category: 'list' },
+  { id: 'numberList', icon: 'format-list-numbered', action: 'numberList', category: 'list' },
+  { id: 'checklist', icon: 'checkbox-marked-outline', action: 'checklist', category: 'list' },
+  { id: 'dashed', icon: 'minus', action: 'dashedList', category: 'list' },
+  { id: 'indent', icon: 'format-indent-increase', action: 'indent', category: 'list' },
   
-  // Heading levels
-  { id: 'h1', icon: 'format-header-1', label: 'Заголовок 1', category: 'formatting', action: 'heading', value: 1 },
-  { id: 'h2', icon: 'format-header-2', label: 'Заголовок 2', category: 'formatting', action: 'heading', value: 2 },
-  { id: 'h3', icon: 'format-header-3', label: 'Заголовок 3', category: 'formatting', action: 'heading', value: 3 },
-  
-  // Media
-  { id: 'image', icon: 'image', label: 'Изображение', category: 'media', action: 'image' },
+  // Insert - четвертая секция  
+  { id: 'table', icon: 'table', action: 'table', category: 'insert' },
+  { id: 'camera', icon: 'camera', action: 'camera', category: 'insert' },
+  { id: 'image', icon: 'image', action: 'image', category: 'insert' },
+  { id: 'scan', icon: 'qrcode-scan', action: 'scan', category: 'insert' },
+  { id: 'draw', icon: 'draw', action: 'draw', category: 'insert' },
 ];
 
-const categories = [
-  { id: 'formatting', label: 'A', icon: 'format-bold' },
-  { id: 'list', label: '•', icon: 'format-list-bulleted' },
-  { id: 'insert', label: '+', icon: 'plus' },
-  { id: 'media', label: '📷', icon: 'image' },
-];
-
-export const ModernToolbar: React.FC<ModernToolbarProps> = ({
+export const AppleNotesToolbar: React.FC<AppleNotesToolbarProps> = ({
   onFormat,
   onImagePicker,
   visible,
   isDarkMode,
+  selectedFormats,
 }) => {
   const { colors } = useTheme();
-  const [activeCategory, setActiveCategory] = useState<string>('formatting');
-  const [selectedActions, setSelectedActions] = useState<Set<string>>(new Set());
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   if (!visible) return null;
 
-  const currentActions = toolbarActions.filter(action => action.category === activeCategory);
-
-  const handleActionPress = (action: ToolbarAction) => {
-    if (action.action === 'image') {
+  const handleButtonPress = (button: ToolbarButton) => {
+    if (button.action === 'image' || button.action === 'camera') {
       onImagePicker();
       return;
     }
 
-    // Toggle selection for formatting actions
-    if (action.category === 'formatting') {
-      const newSelected = new Set(selectedActions);
-      if (newSelected.has(action.id)) {
-        newSelected.delete(action.id);
-      } else {
-        newSelected.add(action.id);
-      }
-      setSelectedActions(newSelected);
+    // Expand section if needed
+    if (button.category !== 'format' && expandedSection !== button.category) {
+      setExpandedSection(button.category);
+      return;
     }
 
-    onFormat(action.action, action.value);
+    onFormat(button.action, button.value);
   };
 
-  const getButtonStyle = (action: ToolbarAction) => {
-    const isSelected = selectedActions.has(action.id);
-    return [
-      styles.actionButton,
-      {
-        backgroundColor: isSelected 
-          ? (isDarkMode ? '#3A3A3C' : '#E5E5EA')
-          : 'transparent',
-        borderColor: isSelected ? colors.primary : 'transparent',
-        borderWidth: isSelected ? 1 : 0,
-      }
-    ];
+  const getButtonColor = (button: ToolbarButton) => {
+    if (selectedFormats.has(button.id)) {
+      return '#F7B801'; // Apple orange/yellow accent
+    }
+    return isDarkMode ? '#FFFFFF' : '#000000';
   };
+
+  const getButtonBackground = (button: ToolbarButton) => {
+    if (selectedFormats.has(button.id)) {
+      return '#F7B801' + '20'; // Semi-transparent background
+    }
+    return 'transparent';
+  };
+
+  const renderSection = (category: string, buttons: ToolbarButton[], showAll: boolean = false) => {
+    const sectionButtons = showAll ? buttons : buttons.slice(0, 4);
+    
+    return (
+      <View style={styles.section}>
+        {sectionButtons.map((button) => (
+          <TouchableOpacity
+            key={button.id}
+            style={[
+              styles.toolButton,
+              {
+                backgroundColor: getButtonBackground(button),
+              }
+            ]}
+            onPress={() => handleButtonPress(button)}
+            activeOpacity={0.6}
+          >
+            <IconButton
+              icon={button.icon}
+              size={24}
+              iconColor={getButtonColor(button)}
+              style={styles.iconButton}
+            />
+          </TouchableOpacity>
+        ))}
+        
+        {!showAll && buttons.length > 4 && (
+          <TouchableOpacity
+            style={styles.moreButton}
+            onPress={() => setExpandedSection(category)}
+            activeOpacity={0.6}
+          >
+            <IconButton
+              icon="chevron-right"
+              size={20}
+              iconColor={isDarkMode ? '#8E8E93' : '#8E8E93'}
+              style={styles.iconButton}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  const titleButtons = toolbarButtons.filter(b => b.category === 'title');
+  const formatButtons = toolbarButtons.filter(b => b.category === 'format');
+  const listButtons = toolbarButtons.filter(b => b.category === 'list');
+  const insertButtons = toolbarButtons.filter(b => b.category === 'insert');
 
   return (
     <Surface style={[
@@ -115,110 +151,125 @@ export const ModernToolbar: React.FC<ModernToolbarProps> = ({
         borderTopColor: isDarkMode ? '#38383A' : '#C6C6C8',
       }
     ]}>
-      {/* Category Selector */}
-      <View style={styles.categoryRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryContainer}
-        >
-          {categories.map((category) => (
+      {expandedSection ? (
+        // Expanded view для конкретной секции
+        <View style={styles.expandedContainer}>
+          <View style={styles.expandedHeader}>
             <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryButton,
-                {
-                  backgroundColor: activeCategory === category.id
-                    ? colors.primary
-                    : 'transparent',
-                }
-              ]}
-              onPress={() => setActiveCategory(category.id)}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  {
-                    color: activeCategory === category.id
-                      ? '#FFFFFF'
-                      : colors.onSurface,
-                  }
-                ]}
-              >
-                {category.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Actions Row */}
-      <View style={styles.actionsRow}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.actionsContainer}
-        >
-          {currentActions.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={getButtonStyle(action)}
-              onPress={() => handleActionPress(action)}
-              activeOpacity={0.7}
+              onPress={() => setExpandedSection(null)}
+              style={styles.backButton}
             >
               <IconButton
-                icon={action.icon}
-                size={22}
-                iconColor={selectedActions.has(action.id) ? colors.primary : colors.onSurface}
-                style={styles.iconButton}
+                icon="chevron-left"
+                size={24}
+                iconColor={isDarkMode ? '#FFFFFF' : '#000000'}
               />
-              <Text
-                style={[
-                  styles.actionLabel,
-                  {
-                    color: selectedActions.has(action.id) ? colors.primary : colors.onSurface,
-                  }
-                ]}
-              >
-                {action.label}
-              </Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <Text style={[styles.sectionTitle, { color: isDarkMode ? '#FFFFFF' : '#000000' }]}>
+              {expandedSection === 'title' && 'Стили текста'}
+              {expandedSection === 'list' && 'Списки'}
+              {expandedSection === 'insert' && 'Вставка'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setExpandedSection(null)}
+              style={styles.doneButton}
+            >
+              <Text style={[styles.doneText, { color: '#F7B801' }]}>Готово</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.expandedContent}
+          >
+            {expandedSection === 'title' && renderSection('title', titleButtons, true)}
+            {expandedSection === 'list' && renderSection('list', listButtons, true)}
+            {expandedSection === 'insert' && renderSection('insert', insertButtons, true)}
+          </ScrollView>
+        </View>
+      ) : (
+        // Compact view - основная панель как в Apple Notes
+        <View style={styles.compactContainer}>
+          {/* Title section - желтая кнопка Title */}
+          <TouchableOpacity
+            style={[
+              styles.titlePill,
+              {
+                backgroundColor: selectedFormats.has('title') ? '#F7B801' : (isDarkMode ? '#2C2C2E' : '#E5E5EA'),
+              }
+            ]}
+            onPress={() => onFormat('title')}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.titlePillText,
+              {
+                color: selectedFormats.has('title') ? '#FFFFFF' : (isDarkMode ? '#FFFFFF' : '#000000'),
+                fontWeight: selectedFormats.has('title') ? '700' : '600',
+              }
+            ]}>
+              Title
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.headingButton,
+              {
+                backgroundColor: selectedFormats.has('heading') ? '#F7B801' + '20' : 'transparent',
+              }
+            ]}
+            onPress={() => onFormat('heading')}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.headingText,
+              {
+                color: selectedFormats.has('heading') ? '#F7B801' : (isDarkMode ? '#FFFFFF' : '#000000'),
+                fontWeight: selectedFormats.has('heading') ? '600' : '400',
+              }
+            ]}>
+              Heading
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.headingButton,
+              {
+                backgroundColor: selectedFormats.has('subheading') ? '#F7B801' + '20' : 'transparent',
+              }
+            ]}
+            onPress={() => onFormat('subheading')}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.subheadingText,
+              {
+                color: selectedFormats.has('subheading') ? '#F7B801' : (isDarkMode ? '#FFFFFF' : '#000000'),
+                fontWeight: selectedFormats.has('subheading') ? '600' : '400',
+              }
+            ]}>
+              Subheading
+            </Text>
+          </TouchableOpacity>
 
-      {/* Quick Access Row for most used actions */}
-      <View style={styles.quickAccessRow}>
-        <TouchableOpacity
-          style={[styles.quickButton, { backgroundColor: isDarkMode ? '#2C2C2E' : '#FFFFFF' }]}
-          onPress={() => onFormat('undo')}
-        >
-          <IconButton icon="undo" size={20} iconColor={colors.onSurface} style={styles.quickIcon} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.quickButton, { backgroundColor: isDarkMode ? '#2C2C2E' : '#FFFFFF' }]}
-          onPress={() => onFormat('redo')}
-        >
-          <IconButton icon="redo" size={20} iconColor={colors.onSurface} style={styles.quickIcon} />
-        </TouchableOpacity>
+          {/* Divider */}
+          <View style={[styles.divider, { backgroundColor: isDarkMode ? '#38383A' : '#C6C6C8' }]} />
 
-        <View style={styles.quickSeparator} />
-        
-        <TouchableOpacity
-          style={[styles.quickButton, { backgroundColor: isDarkMode ? '#2C2C2E' : '#FFFFFF' }]}
-          onPress={() => onFormat('textColor')}
-        >
-          <IconButton icon="format-color-text" size={20} iconColor={colors.onSurface} style={styles.quickIcon} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.quickButton, { backgroundColor: isDarkMode ? '#2C2C2E' : '#FFFFFF' }]}
-          onPress={() => onFormat('highlight')}
-        >
-          <IconButton icon="marker" size={20} iconColor={colors.onSurface} style={styles.quickIcon} />
-        </TouchableOpacity>
-      </View>
+          {/* Format buttons */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.buttonsScroll}
+          >
+            {renderSection('format', formatButtons)}
+            {renderSection('list', listButtons)}
+            {renderSection('insert', insertButtons)}
+          </ScrollView>
+        </View>
+      )}
     </Surface>
   );
 };
@@ -226,85 +277,107 @@ export const ModernToolbar: React.FC<ModernToolbarProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 0.5,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  categoryRow: {
-    marginBottom: 8,
+  compactContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  categoryContainer: {
-    paddingHorizontal: 4,
-  },
-  categoryButton: {
+  titlePill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    marginHorizontal: 4,
-    minWidth: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 18,
+    marginRight: 12,
   },
-  categoryText: {
+  titlePillText: {
     fontSize: 16,
     fontWeight: '600',
   },
-  actionsRow: {
-    marginBottom: 8,
+  headingButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginRight: 8,
   },
-  actionsContainer: {
-    paddingHorizontal: 4,
+  headingText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
-  actionButton: {
+  subheadingText: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  divider: {
+    width: 1,
+    height: 32,
+    marginHorizontal: 12,
+  },
+  buttonsScroll: {
+    flex: 1,
+  },
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  toolButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    minWidth: 80,
+    marginHorizontal: 4,
   },
   iconButton: {
     margin: 0,
     width: 24,
     height: 24,
   },
-  actionLabel: {
-    fontSize: 11,
-    marginTop: 2,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  quickAccessRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 8,
-    borderTopWidth: 0.5,
-    borderTopColor: '#38383A',
-  },
-  quickButton: {
-    borderRadius: 8,
-    marginHorizontal: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  quickIcon: {
-    margin: 0,
+  moreButton: {
     width: 32,
     height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
-  quickSeparator: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#38383A',
-    marginHorizontal: 8,
+  expandedContainer: {
+    minHeight: 120,
+  },
+  expandedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#38383A',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  doneButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  expandedContent: {
+    paddingHorizontal: 8,
   },
 });
+
+// Export the old ModernToolbar for backward compatibility
+export const ModernToolbar = AppleNotesToolbar;

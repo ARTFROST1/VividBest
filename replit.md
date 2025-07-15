@@ -145,6 +145,14 @@ The application follows modern React Native development practices with a focus o
   - "Select" and "Reset" buttons for date filtering
   - Automatic deactivation of Past/Today/Tomorrow buttons when date filter active
   - Beautiful gradient styling for selected date indicator
+- **Apple Notes-Style Rich Text Editor**: Complete redesign of note editing experience with:
+  - Minimalistic Apple Notes-inspired toolbar with "Title", "Heading", "Subheading" text styles
+  - Modern yellow accent color (#F7B801) matching Apple's design language  
+  - Expandable sections for formatting, lists, and insert options
+  - Smooth animations and visual feedback for selected formats
+  - Enhanced rich text editor with Apple-style typography and spacing
+  - Cross-platform compatibility with iOS RichEditor and Android Markdown support
+  - Professional styling with proper heading hierarchy and visual consistency
 - **Modern Formatting Toolbar**: Completely redesigned note editor formatting toolbar with:
   - iPhone/Samsung Notes style interface with categorized tools
   - Category-based organization (Formatting, Lists, Insert, Media)

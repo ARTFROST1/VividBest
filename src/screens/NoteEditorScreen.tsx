@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MediaAttachment from '../components/MediaAttachment';
 import { ResizableImage } from '../components/ResizableImage';
-import { ModernToolbar } from '../components/ModernToolbar';
+import { AppleNotesToolbar } from '../components/ModernToolbar';
 
 const formattingButtons = [
   { icon: 'format-bold', markdown: '**', tooltip: 'Жирный' },
@@ -42,6 +42,8 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [showToolbar, setShowToolbar] = useState(false);
   const [showMediaOptions, setShowMediaOptions] = useState(false);
+  const [selectedFormats, setSelectedFormats] = useState<Set<string>>(new Set());
+  const [currentStyle, setCurrentStyle] = useState<'body' | 'title' | 'heading' | 'subheading'>('body');
   const [mediaAttachments, setMediaAttachments] = useState<Array<{
     id: string;
     uri: string;
@@ -147,11 +149,50 @@ export default function NoteEditorScreen({ route, navigation }) {
     // eslint-disable-next-line
   }, [title, content, id, mediaAttachments]);
 
-  // Обработка форматирования для современной панели инструментов
-  const handleModernFormat = (action: string, value?: any) => {
+  // Обработка форматирования для Apple Notes панели инструментов
+  const handleAppleNotesFormat = (action: string, value?: any) => {
+    // Update selected formats state
+    const newFormats = new Set(selectedFormats);
+    
+    // Handle style changes (exclusive)
+    if (['title', 'heading', 'subheading', 'body'].includes(action)) {
+      // Clear other style formats
+      ['title', 'heading', 'subheading', 'body'].forEach(style => newFormats.delete(style));
+      if (action !== 'body') {
+        newFormats.add(action);
+        setCurrentStyle(action as 'body' | 'title' | 'heading' | 'subheading');
+      } else {
+        setCurrentStyle('body');
+      }
+    } else {
+      // Handle toggle formats (can be combined)
+      if (newFormats.has(action)) {
+        newFormats.delete(action);
+      } else {
+        newFormats.add(action);
+      }
+    }
+    
+    setSelectedFormats(newFormats);
+
     if (Platform.OS === 'ios' && richText.current) {
       // iOS с RichEditor
       switch (action) {
+        case 'title':
+          richText.current.setHeading(1);
+          richText.current.setBold();
+          break;
+        case 'heading':
+          richText.current.setHeading(2);
+          richText.current.setBold();
+          break;
+        case 'subheading':
+          richText.current.setHeading(3);
+          break;
+        case 'body':
+          // Remove heading formatting
+          richText.current.setHeading(0);
+          break;
         case 'bold':
           richText.current.setBold();
           break;
@@ -173,34 +214,23 @@ export default function NoteEditorScreen({ route, navigation }) {
         case 'checklist':
           richText.current.insertHTML('<ul><li><input type="checkbox"> </li></ul>');
           break;
-        case 'blockquote':
-          richText.current.setBlockquote();
+        case 'dashedList':
+          richText.current.insertHTML('<ul style="list-style-type: none;"><li>— </li></ul>');
           break;
-        case 'code':
-          richText.current.setCode();
-          break;
-        case 'heading':
-          if (value === 1) richText.current.setHeading(1);
-          else if (value === 2) richText.current.setHeading(2);
-          else if (value === 3) richText.current.setHeading(3);
-          break;
-        case 'link':
-          richText.current.insertLink('Ссылка', 'https://');
+        case 'indent':
+          richText.current.setIndent();
           break;
         case 'table':
-          richText.current.insertHTML('<table border="1"><tr><td>Ячейка 1</td><td>Ячейка 2</td></tr><tr><td>Ячейка 3</td><td>Ячейка 4</td></tr></table>');
+          richText.current.insertHTML(`
+            <table border="1" style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+              <tr><td style="padding: 8px; border: 1px solid #ccc;">Ячейка 1</td><td style="padding: 8px; border: 1px solid #ccc;">Ячейка 2</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ccc;">Ячейка 3</td><td style="padding: 8px; border: 1px solid #ccc;">Ячейка 4</td></tr>
+            </table>
+          `);
           break;
-        case 'undo':
-          richText.current.undo();
-          break;
-        case 'redo':
-          richText.current.redo();
-          break;
-        case 'textColor':
-          richText.current.setForeColor('#FF6B6B');
-          break;
-        case 'highlight':
-          richText.current.setHiliteColor('#FFEB3B');
+        case 'draw':
+          // Placeholder for drawing functionality
+          richText.current.insertHTML('<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 10px 0;">Область для рисования</div>');
           break;
       }
     } else {
@@ -221,13 +251,14 @@ export default function NoteEditorScreen({ route, navigation }) {
       case 'checklist': return '- [ ] ';
       case 'blockquote': return '> ';
       case 'code': return '`';
-      case 'heading':
-        if (value === 1) return '# ';
-        if (value === 2) return '## ';
-        if (value === 3) return '### ';
-        return '# ';
+      case 'title': return '# ';
+      case 'heading': return '## ';
+      case 'subheading': return '### ';
+      case 'dashedList': return '— ';
+      case 'indent': return '  ';
       case 'link': return '[ссылка](url)';
       case 'table': return '\n| Заголовок 1 | Заголовок 2 |\n|-------------|-------------|\n| Ячейка 1    | Ячейка 2    |\n';
+      case 'draw': return '\n[Область для рисования]\n';
       default: return '';
     }
   };
@@ -389,7 +420,15 @@ export default function NoteEditorScreen({ route, navigation }) {
           value={title}
           onChangeText={setTitle}
           mode="flat"
-          style={[styles.titleInput, { backgroundColor: 'transparent', color: c.text }]}
+          style={[
+            styles.titleInput, 
+            { 
+              backgroundColor: 'transparent', 
+              color: c.text,
+              fontSize: currentStyle === 'title' ? 32 : currentStyle === 'heading' ? 28 : 24,
+              fontWeight: currentStyle === 'title' || currentStyle === 'heading' ? 'bold' : '600'
+            }
+          ]}
           underlineColor="transparent"
           placeholderTextColor={c.placeholder}
           theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
@@ -413,12 +452,63 @@ export default function NoteEditorScreen({ route, navigation }) {
               editorStyle={{
                 color: c.text,
                 backgroundColor: 'transparent',
-                cssText: `body { 
-                  padding: 0; 
-                  line-height: 1.5; 
-                  font-family: System;
-                  font-size: 16px;
-                }`
+                cssText: `
+                  body { 
+                    padding: 0; 
+                    line-height: 1.6; 
+                    font-family: -apple-system, BlinkMacSystemFont, San Francisco, Helvetica, Arial, sans-serif;
+                    font-size: 17px;
+                    color: ${c.text};
+                  }
+                  h1 { 
+                    font-size: 32px; 
+                    font-weight: bold; 
+                    margin: 16px 0 8px 0;
+                    line-height: 1.2;
+                  }
+                  h2 { 
+                    font-size: 28px; 
+                    font-weight: bold; 
+                    margin: 14px 0 7px 0;
+                    line-height: 1.3;
+                  }
+                  h3 { 
+                    font-size: 22px; 
+                    font-weight: 600; 
+                    margin: 12px 0 6px 0;
+                    line-height: 1.3;
+                  }
+                  p { 
+                    margin: 8px 0; 
+                    font-size: 17px;
+                    line-height: 1.6;
+                  }
+                  ul, ol { 
+                    margin: 8px 0; 
+                    padding-left: 20px;
+                  }
+                  li { 
+                    margin: 4px 0;
+                    line-height: 1.5;
+                  }
+                  table { 
+                    border-collapse: collapse; 
+                    width: 100%; 
+                    margin: 12px 0;
+                    border: 1px solid #E0E0E0;
+                  }
+                  td { 
+                    padding: 12px; 
+                    border: 1px solid #E0E0E0;
+                  }
+                  blockquote {
+                    border-left: 4px solid #F7B801;
+                    padding-left: 16px;
+                    margin: 12px 0;
+                    color: ${c.text};
+                    font-style: italic;
+                  }
+                `
               }}
               onTouchStart={() => setShowToolbar(true)}
               onFocus={() => setShowToolbar(true)}
@@ -485,11 +575,12 @@ export default function NoteEditorScreen({ route, navigation }) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
         >
-          <ModernToolbar
-            onFormat={handleModernFormat}
+          <AppleNotesToolbar
+            onFormat={handleAppleNotesFormat}
             onImagePicker={() => setShowMediaOptions(!showMediaOptions)}
             visible={showToolbar}
             isDarkMode={dark}
+            selectedFormats={selectedFormats}
           />
         </KeyboardAvoidingView>
       )}
