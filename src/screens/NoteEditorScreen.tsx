@@ -10,8 +10,9 @@ import { fetchLinkPreview } from '../utils/linkPreview';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RichTextEditor } from '../components/RichTextEditor';
-import { AppleNotesToolbar } from '../components/AppleNotesToolbar';
+import AdvancedRichTextEditor, { EditorRef } from '../components/AdvancedRichTextEditor';
+import { ModernToolbar } from '../components/ModernToolbar';
+import { RichEditor } from 'react-native-pell-rich-editor';
 import MediaAttachment from '../components/MediaAttachment';
 import { ResizableImage } from '../components/ResizableImage';
 import { AudioPlayer } from '../components/AudioPlayer';
@@ -38,7 +39,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [content, setContent] = useState('');
   const [selection, setSelection] = useState<{start:number; end:number}>({start:0,end:0});
   const isFirstLoad = useRef(true);
-  const richText = useRef<any>(null);
+  const editorRef = useRef<EditorRef>(null);
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
@@ -61,6 +62,8 @@ export default function NoteEditorScreen({ route, navigation }) {
     name: string;
     duration?: number;
   }>>([]);
+  const [currentStyle, setCurrentStyle] = useState<'body' | 'title' | 'heading' | 'subheading'>('body');
+  const [showMediaOptions, setShowMediaOptions] = useState(false);
 
 
 
@@ -514,117 +517,18 @@ export default function NoteEditorScreen({ route, navigation }) {
           {new Date().toLocaleDateString()} · {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </Text>
         
-        {/* Editor Container with Rich Text Editor and Images */}
-        <View style={styles.editorContainer}>
-          {/* Rich Text Editor */}
-          {Platform.OS === 'ios' ? (
-            <RichEditor
-              ref={richText}
-              initialContentHTML={content}
-              onChange={setContent}
-              style={styles.editor}
-              placeholder={t('note_text_placeholder', 'Текст заметки...')}
-              editorStyle={{
-                color: c.text,
-                backgroundColor: 'transparent',
-                cssText: `
-                  body { 
-                    padding: 0; 
-                    line-height: 1.6; 
-                    font-family: -apple-system, BlinkMacSystemFont, San Francisco, Helvetica, Arial, sans-serif;
-                    font-size: 17px;
-                    color: ${c.text};
-                  }
-                  h1 { 
-                    font-size: 32px; 
-                    font-weight: bold; 
-                    margin: 16px 0 8px 0;
-                    line-height: 1.2;
-                  }
-                  h2 { 
-                    font-size: 28px; 
-                    font-weight: bold; 
-                    margin: 14px 0 7px 0;
-                    line-height: 1.3;
-                  }
-                  h3 { 
-                    font-size: 22px; 
-                    font-weight: 600; 
-                    margin: 12px 0 6px 0;
-                    line-height: 1.3;
-                  }
-                  p { 
-                    margin: 8px 0; 
-                    font-size: 17px;
-                    line-height: 1.6;
-                  }
-                  ul, ol { 
-                    margin: 8px 0; 
-                    padding-left: 20px;
-                  }
-                  li { 
-                    margin: 4px 0;
-                    line-height: 1.5;
-                  }
-                  table { 
-                    border-collapse: collapse; 
-                    width: 100%; 
-                    margin: 12px 0;
-                    border: 1px solid #E0E0E0;
-                  }
-                  td { 
-                    padding: 12px; 
-                    border: 1px solid #E0E0E0;
-                  }
-                  blockquote {
-                    border-left: 4px solid #F7B801;
-                    padding-left: 16px;
-                    margin: 12px 0;
-                    color: ${c.text};
-                    font-style: italic;
-                  }
-                `
-              }}
-              onTouchStart={() => setShowToolbar(true)}
-              onFocus={() => setShowToolbar(true)}
-            />
-          ) : (
-            <RichTextEditor
-              value={content}
-              onChangeText={setContent}
-              placeholder={t('note_text_placeholder', 'Текст заметки...')}
-              onFocus={() => setShowToolbar(true)}
-              style={[styles.androidEditor, { color: c.text }]}
-            />
-          )}
-          
-          {/* Media Attachments Container - Positioned absolutely over the editor */}
-          {Platform.OS !== 'android' && mediaAttachments.length > 0 && (
-            <View style={styles.mediaContainer}>
-              {mediaAttachments.map(attachment => {
-                // Ensure all values are proper numbers
-                const x = typeof attachment.x === 'number' ? attachment.x : 0;
-                const y = typeof attachment.y === 'number' ? attachment.y : 0;
-                const width = typeof attachment.width === 'number' ? attachment.width : 200;
-                const height = typeof attachment.height === 'number' ? attachment.height : 200;
-                
-                return (
-                  <ResizableImage
-                    key={attachment.id}
-                    uri={attachment.uri}
-                    initialWidth={width}
-                    initialHeight={height}
-                    x={x}
-                    y={y}
-                    onDelete={() => handleImageDeleted(attachment.id)}
-                    onResize={(w, h) => handleImageResized(attachment.id, w, h)}
-                    onMove={(dx, dy) => handleImageMoved(attachment.id, dx, dy)}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </View>
+        {/* Advanced Rich Text Editor */}
+        <AdvancedRichTextEditor
+          ref={editorRef}
+          value={content}
+          onChangeText={setContent}
+          placeholder={t('note_text_placeholder', 'Текст заметки...')}
+          onFocus={() => setShowToolbar(true)}
+          onBlur={() => setShowToolbar(false)}
+          showToolbar={showToolbar}
+          onToolbarVisibilityChange={setShowToolbar}
+          style={styles.editorContainer}
+        />
         
         {/* Audio Files */}
         {audioFiles.length > 0 && (
@@ -682,12 +586,11 @@ export default function NoteEditorScreen({ route, navigation }) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
         >
-          <AppleNotesToolbar
-            onFormat={handleAppleNotesFormat}
-            onImagePicker={handleImagePicker}
-            onAudioPicker={handleAudioPicker}
+          <ModernToolbar
+            editorRef={editorRef}
             visible={showToolbar}
             selectedFormats={selectedFormats}
+            onAction={handleAppleNotesFormat}
           />
         </KeyboardAvoidingView>
       )}
