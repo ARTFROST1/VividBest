@@ -1,0 +1,30 @@
+ expo start
+WARNING: The legacy expo-cli does not support Node +17. Migrate to the new local Expo CLI: https://blog.expo.dev/the-new-expo-cli-f4250d8e3421.
+┌───────────────────────────────────────────────────────────────────────────┐
+│                                                                           │
+│   The global expo-cli package has been deprecated.                        │
+│                                                                           │
+│   The new Expo CLI is now bundled in your project in the expo package.    │
+│   Learn more: https://blog.expo.dev/the-new-expo-cli-f4250d8e3421.        │
+│                                                                           │
+│   To use the local CLI instead (recommended in SDK 46 and higher), run:   │
+│   › npx expo <command>                                                    │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+Starting project at C:\Users\moroz\Desktop\VividBest
+Some dependencies are incompatible with the installed expo package version:
+ - @react-native-async-storage/async-storage - expected version: 2.1.2 - actual version installed: 2.2.0    
+ - @react-native-community/datetimepicker - expected version: 8.4.1 - actual version installed: 8.4.2       
+ - react - expected version: 19.0.0 - actual version installed: 19.1.0
+ - react-dom - expected version: 19.0.0 - actual version installed: 19.1.0
+ - react-native-safe-area-context - expected version: 5.4.0 - actual version installed: 5.5.2
+ - react-native-svg - expected version: 15.11.2 - actual version installed: 15.12.0
+ - react-native-webview - expected version: 13.13.5 - actual version installed: 13.15.0
+Your project may not work correctly until you install the correct versions of the packages.
+To install the correct versions of these packages, please run: expo doctor --fix-dependencies,
+or install individual packages by running expo install [package-name ...]
+ExpoMetroConfig.loadAsync is not a function
+TypeError: ExpoMetroConfig.loadAsync is not a function
+    at runMetroDevServerAsync (C:\Users\moroz\AppData\Roaming\npm\node_modules\expo-cli\node_modules\@expo\dev-server\src\MetroDevServer.ts:86:45)
+    at startDevServerAsync (C:\Users\moroz\AppData\Roaming\npm\node_modules\expo-cli\node_modules\xdl\src\start\startDevServerAsync.ts:75:77)
+    at startAsync (C:\Users\moroz\AppData\Roaming\npm\node_modules\expo-cli\node_modules\xdl\src\start\startAsync.ts:84:41)
