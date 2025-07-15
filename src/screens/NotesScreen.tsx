@@ -798,6 +798,109 @@ const NotesScreen = () => {
     fontSize: 17,
     fontWeight: '600',
   },
+  // Современные модальные окна
+  modernModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modernModalContent: {
+    width: '85%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modernModalHeader: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  modernModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modernModalSection: {
+    marginBottom: 20,
+  },
+  modernModalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modernModalSectionLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 10,
+  },
+  modernModalInput: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    borderWidth: 0,
+  },
+  modernModalToggle: {
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modernModalToggleText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modernModalHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  modernModalHintText: {
+    fontSize: 14,
+    marginLeft: 8,
+    fontStyle: 'italic',
+  },
+  modernModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modernModalCancelButton: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modernModalCancelText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modernModalCreateButton: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  modernModalCreateButtonContent: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modernModalCreateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
   });
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
   const [showDialog, setShowDialog] = useState(false);
@@ -1919,49 +2022,114 @@ const NotesScreen = () => {
             }
           </ScrollView>
         )}
-        {/* Диалог создания заметки/папки */}
+        {/* Современное модальное окно создания заметки/папки */}
         <Portal>
           {showDialog && (
-            <View style={styles.modalOverlayCustom}>
-              <View style={styles.iosModalContent}> 
-                <Text style={styles.iosModalTitle}>{t('create_new', 'Создать')} {isFolder ? t('folder', 'папка') : t('note', 'заметка')}</Text>
-                <TextInput
-                  placeholder={t('name', 'Название')}
-                  value={newTitle}
-                  onChangeText={setNewTitle}
-                  autoFocus
-                  style={styles.iosModalInput}
-                  placeholderTextColor="#8E8E93"
-                />
-                {createMode === 'both' && (
-                  <TouchableOpacity 
-                    onPress={() => setIsFolder(f => !f)} 
-                    style={styles.iosTypeToggle}
-                  >
-                    <Text style={styles.iosTypeToggleText}>
-                      {isFolder ? t('create_as_note', 'Создать как заметку') : t('create_as_folder', 'Создать как папку')}
+            <View style={styles.modernModalOverlay}>
+              <View style={[styles.modernModalContent, { backgroundColor: colors.background }]}>
+                {/* Заголовок */}
+                <View style={styles.modernModalHeader}>
+                  <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
+                    {isFolder ? 'Новая папка' : 'Новая заметка'}
+                  </Text>
+                </View>
+
+                {/* Название */}
+                <View style={styles.modernModalSection}>
+                  <View style={styles.modernModalSectionHeader}>
+                    <MaterialCommunityIcons 
+                      name={isFolder ? "folder-outline" : "note-text-outline"} 
+                      size={20} 
+                      color="#F7B801" 
+                    />
+                    <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
+                      Название
                     </Text>
-                  </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    placeholder={isFolder ? "Название папки..." : "Название заметки..."}
+                    value={newTitle}
+                    onChangeText={setNewTitle}
+                    autoFocus
+                    style={[styles.modernModalInput, { backgroundColor: colors.surface, color: colors.onSurface }]}
+                    placeholderTextColor={colors.placeholder}
+                  />
+                </View>
+
+                {/* Переключатель типа */}
+                {createMode === 'both' && (
+                  <View style={styles.modernModalSection}>
+                    <View style={styles.modernModalSectionHeader}>
+                      <MaterialCommunityIcons 
+                        name="swap-horizontal" 
+                        size={20} 
+                        color="#F7B801" 
+                      />
+                      <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
+                        Тип
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      onPress={() => setIsFolder(f => !f)} 
+                      style={[styles.modernModalToggle, { backgroundColor: colors.surface }]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.modernModalToggleText, { color: '#F7B801' }]}>
+                        {isFolder ? 'Создать заметку' : 'Создать папку'}
+                      </Text>
+                      <MaterialCommunityIcons 
+                        name="chevron-right" 
+                        size={20} 
+                        color="#F7B801" 
+                      />
+                    </TouchableOpacity>
+                  </View>
                 )}
+
+                {/* Подсказки */}
                 {createMode === 'folder' && (
-                  <Text style={styles.iosModalHint}>{t('only_folder_allowed', 'Создать папку в корне')}</Text>
+                  <View style={styles.modernModalHint}>
+                    <MaterialCommunityIcons name="information-outline" size={16} color={colors.placeholder} />
+                    <Text style={[styles.modernModalHintText, { color: colors.placeholder }]}>
+                      Создается папка в корне
+                    </Text>
+                  </View>
                 )}
                 {createMode === 'note' && (
-                  <Text style={styles.iosModalHint}>{t('only_note_allowed', 'В этой папке можно создать только заметку')}</Text>
+                  <View style={styles.modernModalHint}>
+                    <MaterialCommunityIcons name="information-outline" size={16} color={colors.placeholder} />
+                    <Text style={[styles.modernModalHintText, { color: colors.placeholder }]}>
+                      В этой папке можно создать только заметку
+                    </Text>
+                  </View>
                 )}
-                <View style={styles.iosModalButtons}>
+
+                {/* Кнопки действий */}
+                <View style={styles.modernModalActions}>
                   <TouchableOpacity
                     onPress={() => setShowDialog(false)}
-                    style={styles.iosModalCancelButton}
+                    style={[styles.modernModalCancelButton, { borderColor: colors.outline }]}
                   >
-                    <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
+                    <Text style={[styles.modernModalCancelText, { color: colors.placeholder }]}>
+                      Отмена
+                    </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleAdd}
-                    style={styles.iosModalActionButton}
+                  
+                  <LinearGradient
+                    colors={['#F7B801', '#F39C12']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.modernModalCreateButton}
                   >
-                    <Text style={styles.iosModalActionText}>{t('create', 'Создать')}</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAdd}
+                      style={styles.modernModalCreateButtonContent}
+                    >
+                      <Text style={styles.modernModalCreateText}>
+                        Создать
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
                 </View>
               </View>
             </View>
@@ -2033,40 +2201,71 @@ const NotesScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* iOS-style Rename Dialog */}
+      {/* Современное модальное окно переименования */}
       <Portal>
         {renameDialog && (
-          <View style={styles.modalOverlayCustom}>
-            <View style={styles.iosModalContent}> 
-              <Text style={styles.iosModalTitle}>
-                {t('rename', 'Переименовать')} {renameDialog.isFolder ? t('folder', 'папку') : t('note', 'заметку')}
-              </Text>
-              <TextInput
-                placeholder={renameDialog.isFolder ? t('folder_name', 'Имя папки') : t('note_name', 'Имя заметки')}
-                value={renameValue}
-                onChangeText={setRenameValue}
-                autoFocus
-                style={styles.iosModalInput}
-                placeholderTextColor="#8E8E93"
-              />
-              <View style={styles.iosModalButtons}>
+          <View style={styles.modernModalOverlay}>
+            <View style={[styles.modernModalContent, { backgroundColor: colors.background }]}>
+              {/* Заголовок */}
+              <View style={styles.modernModalHeader}>
+                <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
+                  Переименовать {renameDialog.isFolder ? 'папку' : 'заметку'}
+                </Text>
+              </View>
+
+              {/* Название */}
+              <View style={styles.modernModalSection}>
+                <View style={styles.modernModalSectionHeader}>
+                  <MaterialCommunityIcons 
+                    name="pencil-outline" 
+                    size={20} 
+                    color="#F7B801" 
+                  />
+                  <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
+                    Новое название
+                  </Text>
+                </View>
+                <TextInput
+                  placeholder={renameDialog.isFolder ? "Название папки..." : "Название заметки..."}
+                  value={renameValue}
+                  onChangeText={setRenameValue}
+                  autoFocus
+                  style={[styles.modernModalInput, { backgroundColor: colors.surface, color: colors.onSurface }]}
+                  placeholderTextColor={colors.placeholder}
+                />
+              </View>
+
+              {/* Кнопки действий */}
+              <View style={styles.modernModalActions}>
                 <TouchableOpacity
                   onPress={() => setRenameDialog(null)}
-                  style={styles.iosModalCancelButton}
+                  style={[styles.modernModalCancelButton, { borderColor: colors.outline }]}
                 >
-                  <Text style={styles.iosModalCancelText}>{t('cancel', 'Отмена')}</Text>
+                  <Text style={[styles.modernModalCancelText, { color: colors.placeholder }]}>
+                    Отмена
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (renameDialog) {
-                      handleRenameApply();
-                      setRenameDialog(null);
-                    }
-                  }}
-                  style={styles.iosModalActionButton}
+                
+                <LinearGradient
+                  colors={['#F7B801', '#F39C12']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modernModalCreateButton}
                 >
-                  <Text style={styles.iosModalActionText}>{t('rename', 'Переименовать')}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (renameDialog) {
+                        handleRenameApply();
+                        setRenameDialog(null);
+                      }
+                    }}
+                    style={styles.modernModalCreateButtonContent}
+                  >
+                    <Text style={styles.modernModalCreateText}>
+                      Переименовать
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
               </View>
             </View>
           </View>

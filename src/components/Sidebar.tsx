@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
@@ -52,29 +52,67 @@ const Sidebar: React.FC<SidebarProps & {
     setMenuPos(null);
   };
 
-  // Рекурсивный рендер папок и заметок
+  // Современный рендер папок и заметок
   const renderFolders = (items: FolderNode[], level = 0) =>
     items.map(item => {
+      const isActive = activeId === item.id;
       const folderBtnProps: any = {
         style: [
-          styles.folderBtn,
-          { borderRadius: roundness, backgroundColor: activeId === item.id ? colors.primary + '22' : 'transparent' },
+          styles.modernFolderBtn,
+          { 
+            backgroundColor: isActive ? '#F7B801' + '20' : 'transparent',
+            borderRadius: 12,
+            marginLeft: level * 16,
+            borderLeftWidth: isActive ? 3 : 0,
+            borderLeftColor: isActive ? '#F7B801' : 'transparent',
+          },
         ],
         onPress: () => onSelect(item.id),
         onLongPress: () => openMenu(item.id, true),
       };
       if (Platform.OS === 'web') folderBtnProps.onContextMenu = (e: any) => openMenu(item.id, true, e);
+      
       const folderBtn = (
         <TouchableOpacity key={item.id} {...folderBtnProps}>
-          <MaterialCommunityIcons name="folder-outline" size={22} color={colors.primary} style={{ marginRight: 10 }} />
-          <Text style={[styles.folderText, { color: colors.onSurface }]}>{item.title}</Text>
+          <View style={styles.modernItemContent}>
+            <MaterialCommunityIcons 
+              name={isActive ? "folder" : "folder-outline"} 
+              size={20} 
+              color={isActive ? '#F7B801' : (dark ? '#8E8E93' : '#6D6D70')} 
+              style={{ marginRight: 12 }} 
+            />
+            <Text style={[
+              styles.modernFolderText, 
+              { 
+                color: isActive ? '#F7B801' : (dark ? '#FFFFFF' : '#000000'),
+                fontWeight: isActive ? '600' : '500'
+              }
+            ]}>
+              {item.title}
+            </Text>
+            {item.notes && item.notes.length > 0 && (
+              <View style={[styles.notesCount, { backgroundColor: dark ? '#3A3A3C' : '#E5E5EA' }]}>
+                <Text style={[styles.notesCountText, { color: dark ? '#FFFFFF' : '#000000' }]}>
+                  {item.notes.length}
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       );
+      
       const noteBtns = item.notes && item.notes.map(note => {
+        const isNoteActive = activeId === note.id;
         const noteBtnProps: any = {
           style: [
-            styles.noteBtn,
-            { borderRadius: roundness, backgroundColor: activeId === note.id ? colors.primary + '22' : 'transparent' },
+            styles.modernNoteBtn,
+            { 
+              backgroundColor: isNoteActive ? '#F7B801' + '15' : 'transparent',
+              borderRadius: 8,
+              marginLeft: (level + 1) * 16,
+              borderLeftWidth: isNoteActive ? 2 : 0,
+              borderLeftColor: isNoteActive ? '#F7B801' : 'transparent',
+            },
           ],
           onPress: () => onSelect(note.id),
           onLongPress: () => openMenu(note.id, false),
@@ -82,13 +120,29 @@ const Sidebar: React.FC<SidebarProps & {
         if (Platform.OS === 'web') noteBtnProps.onContextMenu = (e: any) => openMenu(note.id, false, e);
         return (
           <TouchableOpacity key={note.id} {...noteBtnProps}>
-            <MaterialCommunityIcons name="note-outline" size={18} color={noteColor} style={{ marginRight: 8 }} />
-            <Text style={[styles.noteText, { color: colors.onSurface }]}>{note.title}</Text>
+            <View style={styles.modernItemContent}>
+              <MaterialCommunityIcons 
+                name="note-text-outline" 
+                size={16} 
+                color={isNoteActive ? '#F7B801' : (dark ? '#8E8E93' : '#6D6D70')} 
+                style={{ marginRight: 10 }} 
+              />
+              <Text style={[
+                styles.modernNoteText, 
+                { 
+                  color: isNoteActive ? '#F7B801' : (dark ? '#FFFFFF' : '#000000'),
+                  fontWeight: isNoteActive ? '500' : '400'
+                }
+              ]}>
+                {note.title}
+              </Text>
+            </View>
           </TouchableOpacity>
         );
       });
+      
       return (
-        <View key={item.id} style={{ marginLeft: level * 16 }}>
+        <View key={item.id}>
           {folderBtn}
           {noteBtns}
           {/* Вложенные папки */}
@@ -99,27 +153,60 @@ const Sidebar: React.FC<SidebarProps & {
 
   // Контекстное меню через Dialog/Portal
   return (
-    <View style={[styles.sidebar, { backgroundColor: colors.background, borderRightColor: colors.outline }]}> 
-      {/* Заголовок как выделяемый и кликабельный элемент */}
-      <TouchableOpacity
-        style={[
-          styles.titleBtn,
-          { backgroundColor: activeId === null ? colors.primary + '22' : 'transparent', borderRadius: roundness },
-        ]}
-        onPress={() => onSelect(null)}
-        activeOpacity={0.7}
-      >
-        <Text style={[styles.title, { color: colors.onSurface, fontWeight: 'bold' }]}>{t('folders_and_notes', 'Папки и заметки')}</Text>
-      </TouchableOpacity>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {renderFolders(folders)}
-        <TouchableOpacity style={[styles.addFolderBtn, { borderRadius: roundness }]} onPress={onAddFolder}>
-          <Text style={[styles.addFolderText, { color: colors.primary }]}>+
-            {activeFolderLevel === 0 && t('new_folder', 'Новая_папку')}
-            {activeFolderLevel === 1 && t('new', 'Создать')}
-            {activeFolderLevel >= 2 && t('new_note', 'Новая_заметку')}
+    <View style={[styles.sidebar, { backgroundColor: dark ? '#1C1C1E' : '#F8F9FA', borderRightColor: dark ? '#38383A' : '#E5E5EA' }]}> 
+      {/* Современный заголовок */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={[
+            styles.allNotesButton,
+            { 
+              backgroundColor: activeId === null ? '#F7B801' : 'transparent',
+              borderRadius: 12,
+            },
+          ]}
+          onPress={() => onSelect(null)}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons 
+            name="note-multiple" 
+            size={20} 
+            color={activeId === null ? '#FFFFFF' : (dark ? '#FFFFFF' : '#000000')} 
+            style={{ marginRight: 8 }}
+          />
+          <Text style={[
+            styles.allNotesText, 
+            { 
+              color: activeId === null ? '#FFFFFF' : (dark ? '#FFFFFF' : '#000000'),
+              fontWeight: activeId === null ? '600' : '500'
+            }
+          ]}>
+            {t('all_notes', 'Все заметки')}
           </Text>
         </TouchableOpacity>
+        
+        {/* Добавить новый элемент */}
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: dark ? '#2C2C2E' : '#FFFFFF' }]} 
+          onPress={onAddFolder}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons 
+            name="plus" 
+            size={20} 
+            color={dark ? '#FFFFFF' : '#000000'} 
+          />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollContainer}>
+        {folders.length > 0 && (
+          <View style={styles.foldersSection}>
+            <Text style={[styles.sectionTitle, { color: dark ? '#8E8E93' : '#6D6D70' }]}>
+              {t('folders', 'Папки')}
+            </Text>
+            {renderFolders(folders)}
+          </View>
+        )}
       </ScrollView>
       <IOSContextMenu
         visible={menuVisible}
@@ -150,59 +237,92 @@ const Sidebar: React.FC<SidebarProps & {
 
 const styles = StyleSheet.create({
   sidebar: {
-    width: 280,
-    borderRightWidth: 1,
     flex: 1,
-    paddingTop: 28,
-    paddingHorizontal: 18,
+    borderRightWidth: 0.5,
   },
-  title: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 22,
-    letterSpacing: 0.5,
-  },
-  folderBtn: {
+  header: {
+    padding: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E5EA',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    marginBottom: 2,
-    marginTop: 2,
+    justifyContent: 'space-between',
   },
-  folderText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  noteBtn: {
+  allNotesButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    paddingHorizontal: 8,
-    marginBottom: 2,
-    marginLeft: 22,
+    flex: 1,
+    marginRight: 8,
   },
-  noteText: {
-    fontSize: 15,
-    fontWeight: '400',
-  },
-  addFolderBtn: {
-    marginTop: 22,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'flex-start',
-  },
-  addFolderText: {
-    fontWeight: 'bold',
+  allNotesText: {
     fontSize: 16,
-    letterSpacing: 0.2,
+    flex: 1,
   },
-  titleBtn: {
-    marginBottom: 10,
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  foldersSection: {
+    paddingTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  modernFolderBtn: {
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'flex-start',
+    marginVertical: 2,
+  },
+  modernNoteBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginVertical: 1,
+  },
+  modernItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  modernFolderText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  modernNoteText: {
+    fontSize: 14,
+    flex: 1,
+  },
+  notesCount: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  notesCountText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
 
-export default Sidebar; 
+export default Sidebar;
