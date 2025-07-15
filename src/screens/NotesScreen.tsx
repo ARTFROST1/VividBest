@@ -1222,6 +1222,12 @@ const NotesScreen = () => {
 
   // Быстрое создание заметки как в Apple Notes
   const handleQuickCreateNote = async () => {
+    // Если находимся в корне, создаем папку через модальное окно
+    if (activeSidebarFilter == null) {
+      openCreateDialog('main');
+      return;
+    }
+    
     const currentTimestamp = Date.now();
     const newId = Math.random().toString(36).substring(2, 11);
     const defaultTitle = 'Новая заметка';
@@ -2280,13 +2286,18 @@ const NotesScreen = () => {
           onPress={handleQuickCreateNote}
           activeOpacity={0.8}
         >
-          <View style={[styles.addButton, { backgroundColor: colors.primary }]}>
+          <LinearGradient
+            colors={['#7745dc', '#f34f8c']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.addButton}
+          >
             <MaterialCommunityIcons 
               name="plus" 
               size={28} 
               color="#FFFFFF" 
             />
-          </View>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 

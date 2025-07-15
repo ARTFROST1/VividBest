@@ -170,3 +170,12 @@ The application follows modern React Native development practices with a focus o
   - Modern design with rounded buttons and visual feedback
   - Support for headings, tables, checklists, and advanced formatting
   - Automatic toolbar show/hide on editor focus
+- **Refined Modal Design**: Updated create note/folder modal with:
+  - Replaced yellow accents with app's primary color scheme
+  - Removed green hint section for cleaner interface
+  - More consistent color theming throughout the interface
+- **Apple Notes-Style Quick Note Creation**: Enhanced floating action button with:
+  - Beautiful gradient background (#7745dc to #f34f8c)
+  - Instant note creation and editor opening (like Apple Notes)
+  - Smart behavior: shows modal in root, creates notes in folders
+  - Seamless transition to note editor with cursor focus
