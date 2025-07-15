@@ -604,14 +604,13 @@ const NotesScreen = () => {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: c.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   addButtonText: {
     color: '#fff',
@@ -833,7 +832,7 @@ const NotesScreen = () => {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(247, 184, 1, 0.1)',
+    backgroundColor: 'rgba(120, 120, 128, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -867,8 +866,8 @@ const NotesScreen = () => {
     backgroundColor: 'rgba(120, 120, 128, 0.12)',
   },
   modernModalInputFocused: {
-    borderColor: '#F7B801',
-    backgroundColor: 'rgba(247, 184, 1, 0.08)',
+    borderColor: '#007AFF',
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
   },
   modernModalToggleContainer: {
     flexDirection: 'row',
@@ -886,8 +885,8 @@ const NotesScreen = () => {
     justifyContent: 'center',
   },
   modernModalToggleActive: {
-    backgroundColor: '#F7B801',
-    shadowColor: '#F7B801',
+    backgroundColor: '#007AFF',
+    shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -935,7 +934,9 @@ const NotesScreen = () => {
   modernModalCreateButton: {
     flex: 1,
     borderRadius: 16,
-    overflow: 'hidden',
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modernModalCreateButtonGradient: {
     paddingVertical: 16,
@@ -1168,7 +1169,11 @@ const NotesScreen = () => {
       children: isFolder ? [] : undefined,
       timestamp: isFolder ? undefined : currentTimestamp, // Добавляем таймстемп только для заметок, не для папок
     };
-    
+
+    await addNewItemToList(newItem, newId, currentTimestamp);
+  };
+
+  const addNewItemToList = async (newItem: NoteItem, newId: string, currentTimestamp: number) => {
     setNotes(prev => {
       // Если выбрана папка в сайдбаре, добавляем в неё
       if (activeSidebarFilter && activeSidebarFilter !== 'fav') {
@@ -1193,10 +1198,10 @@ const NotesScreen = () => {
     });
     
     // Если создаём заметку (не папку), сразу сохраняем её в AsyncStorage
-    if (!isFolder) {
+    if (!newItem.isFolder) {
       await saveNoteLocal({
         id: newId,
-        title: newTitle.trim(),
+        title: newItem.title,
         content: '',
         timestamp: currentTimestamp,
         mediaAttachments: [],
@@ -1209,10 +1214,35 @@ const NotesScreen = () => {
     setMoveSource(null);
     
     // Если создали заметку, сохраняем id и title для перехода позже
-    if (!isFolder) {
+    if (!newItem.isFolder) {
       setPendingNewNoteId(newId);
-      setPendingNewNoteTitle(newTitle.trim());
+      setPendingNewNoteTitle(newItem.title);
     }
+  };
+
+  // Быстрое создание заметки как в Apple Notes
+  const handleQuickCreateNote = async () => {
+    const currentTimestamp = Date.now();
+    const newId = Math.random().toString(36).substring(2, 11);
+    const defaultTitle = 'Новая заметка';
+    
+    const newItem: NoteItem = {
+      id: newId,
+      title: defaultTitle,
+      isFolder: false,
+      pinned: false,
+      status: 'todo',
+      children: undefined,
+      timestamp: currentTimestamp,
+    };
+
+    await addNewItemToList(newItem, newId, currentTimestamp);
+    
+    // Сразу открываем редактор заметки
+    navigation.navigate('NoteEditor', { 
+      id: newId, 
+      title: defaultTitle 
+    });
   };
 
   // Удаление (рекурсивно)
@@ -2085,7 +2115,7 @@ const NotesScreen = () => {
                       <MaterialCommunityIcons 
                         name={isFolder ? "folder-plus-outline" : "note-plus-outline"} 
                         size={28} 
-                        color="#F7B801" 
+                        color={colors.primary} 
                       />
                     </View>
                     <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
@@ -2156,20 +2186,7 @@ const NotesScreen = () => {
                       />
                     </View>
                     
-                    {/* Подсказка */}
-                    <View style={styles.modernModalHint}>
-                      <MaterialCommunityIcons 
-                        name="information-outline" 
-                        size={14} 
-                        color="#34C759" 
-                      />
-                      <Text style={[styles.modernModalHintText, { color: colors.onSurface }]}>
-                        {isFolder 
-                          ? 'Папка поможет организовать заметки по темам'
-                          : 'Заметка автоматически сохраняется при редактировании'
-                        }
-                      </Text>
-                    </View>
+
                   </View>
 
                   {/* Кнопки действий */}
@@ -2188,23 +2205,20 @@ const NotesScreen = () => {
                       </Text>
                     </TouchableOpacity>
                     
-                    <View style={styles.modernModalCreateButton}>
-                      <LinearGradient
-                        colors={['#F7B801', '#E5A001']}
-                        style={styles.modernModalCreateButtonGradient}
-                      >
-                        <TouchableOpacity 
-                          onPress={handleAdd}
-                          activeOpacity={0.8}
-                          disabled={!newTitle.trim()}
-                          style={{ opacity: newTitle.trim() ? 1 : 0.5 }}
-                        >
-                          <Text style={styles.modernModalCreateText}>
-                            Создать
-                          </Text>
-                        </TouchableOpacity>
-                      </LinearGradient>
-                    </View>
+                    <TouchableOpacity 
+                      onPress={handleAdd}
+                      style={[
+                        styles.modernModalCreateButton,
+                        { backgroundColor: colors.primary },
+                        !newTitle.trim() && { opacity: 0.5 }
+                      ]}
+                      activeOpacity={0.8}
+                      disabled={!newTitle.trim()}
+                    >
+                      <Text style={styles.modernModalCreateText}>
+                        Создать
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -2260,20 +2274,19 @@ const NotesScreen = () => {
             }
           ]}
         />
-        {/* Кнопка добавить в стиле iOS */}
+        {/* Кнопка добавить в стиле Apple Notes */}
         <TouchableOpacity 
           style={styles.addButtonContainer}
-          onPress={() => openCreateDialog('main')}
+          onPress={handleQuickCreateNote}
           activeOpacity={0.8}
         >
-          <LinearGradient
-            colors={['#7745dc', '#f34f8c']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.addButton}
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </LinearGradient>
+          <View style={[styles.addButton, { backgroundColor: colors.primary }]}>
+            <MaterialCommunityIcons 
+              name="plus" 
+              size={28} 
+              color="#FFFFFF" 
+            />
+          </View>
         </TouchableOpacity>
       </View>
 

@@ -60,11 +60,11 @@ const Sidebar: React.FC<SidebarProps & {
         style: [
           styles.modernFolderBtn,
           { 
-            backgroundColor: isActive ? '#F7B801' + '20' : 'transparent',
+            backgroundColor: isActive ? colors.primary + '20' : 'transparent',
             borderRadius: 12,
             marginLeft: level * 16,
             borderLeftWidth: isActive ? 3 : 0,
-            borderLeftColor: isActive ? '#F7B801' : 'transparent',
+            borderLeftColor: isActive ? colors.primary : 'transparent',
           },
         ],
         onPress: () => onSelect(item.id),
@@ -78,13 +78,13 @@ const Sidebar: React.FC<SidebarProps & {
             <MaterialCommunityIcons 
               name={isActive ? "folder" : "folder-outline"} 
               size={20} 
-              color={isActive ? '#F7B801' : (dark ? '#8E8E93' : '#6D6D70')} 
+              color={isActive ? colors.primary : (dark ? '#8E8E93' : '#6D6D70')} 
               style={{ marginRight: 12 }} 
             />
             <Text style={[
               styles.modernFolderText, 
               { 
-                color: isActive ? '#F7B801' : (dark ? '#FFFFFF' : '#000000'),
+                color: isActive ? colors.primary : (dark ? '#FFFFFF' : '#000000'),
                 fontWeight: isActive ? '600' : '500'
               }
             ]}>
@@ -107,11 +107,11 @@ const Sidebar: React.FC<SidebarProps & {
           style: [
             styles.modernNoteBtn,
             { 
-              backgroundColor: isNoteActive ? '#F7B801' + '15' : 'transparent',
+              backgroundColor: isNoteActive ? colors.primary + '15' : 'transparent',
               borderRadius: 8,
               marginLeft: (level + 1) * 16,
               borderLeftWidth: isNoteActive ? 2 : 0,
-              borderLeftColor: isNoteActive ? '#F7B801' : 'transparent',
+              borderLeftColor: isNoteActive ? colors.primary : 'transparent',
             },
           ],
           onPress: () => onSelect(note.id),
@@ -124,13 +124,13 @@ const Sidebar: React.FC<SidebarProps & {
               <MaterialCommunityIcons 
                 name="note-text-outline" 
                 size={16} 
-                color={isNoteActive ? '#F7B801' : (dark ? '#8E8E93' : '#6D6D70')} 
+                color={isNoteActive ? colors.primary : (dark ? '#8E8E93' : '#6D6D70')} 
                 style={{ marginRight: 10 }} 
               />
               <Text style={[
                 styles.modernNoteText, 
                 { 
-                  color: isNoteActive ? '#F7B801' : (dark ? '#FFFFFF' : '#000000'),
+                  color: isNoteActive ? colors.primary : (dark ? '#FFFFFF' : '#000000'),
                   fontWeight: isNoteActive ? '500' : '400'
                 }
               ]}>
@@ -160,7 +160,7 @@ const Sidebar: React.FC<SidebarProps & {
           style={[
             styles.allNotesButton,
             { 
-              backgroundColor: activeId === null ? '#F7B801' : 'transparent',
+              backgroundColor: activeId === null ? colors.primary : 'transparent',
               borderRadius: 12,
             },
           ]}
