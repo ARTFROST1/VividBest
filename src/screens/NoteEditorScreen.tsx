@@ -11,6 +11,7 @@ import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SimpleAdvancedEditor, { SimpleEditorRef } from '../components/SimpleAdvancedEditor';
+import AndroidRichTextEditor, { AndroidEditorRef } from '../components/AndroidRichTextEditor';
 import { AppleNotesToolbar } from '../components/AppleNotesToolbar';
 import { RichEditor } from 'react-native-pell-rich-editor';
 import MediaAttachment from '../components/MediaAttachment';
@@ -39,7 +40,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [content, setContent] = useState('');
   const [selection, setSelection] = useState<{start:number; end:number}>({start:0,end:0});
   const isFirstLoad = useRef(true);
-  const editorRef = useRef<SimpleEditorRef>(null);
+  const editorRef = useRef<SimpleEditorRef | AndroidEditorRef>(null);
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
@@ -517,17 +518,40 @@ export default function NoteEditorScreen({ route, navigation }) {
           {new Date().toLocaleDateString()} · {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </Text>
         
-        {/* Simple Advanced Rich Text Editor */}
-        <SimpleAdvancedEditor
-          ref={editorRef}
-          value={content}
-          onChangeText={setContent}
-          placeholder={t('note_text_placeholder', 'Текст заметки...')}
-          onFocus={() => setShowToolbar(true)}
-          onBlur={() => setShowToolbar(false)}
-          showToolbar={showToolbar}
-          style={styles.editorContainer}
-        />
+        {/* Platform-Specific Rich Text Editor */}
+        {Platform.OS === 'android' ? (
+          <AndroidRichTextEditor
+            ref={editorRef as React.RefObject<AndroidEditorRef>}
+            value={content}
+            onChangeText={setContent}
+            placeholder={t('note_text_placeholder', 'Текст заметки...')}
+            onFocus={() => setShowToolbar(true)}
+            onBlur={() => setShowToolbar(false)}
+            style={styles.editorContainer}
+          />
+        ) : Platform.OS === 'web' ? (
+          <SimpleAdvancedEditor
+            ref={editorRef as React.RefObject<SimpleEditorRef>}
+            value={content}
+            onChangeText={setContent}
+            placeholder={t('note_text_placeholder', 'Текст заметки...')}
+            onFocus={() => setShowToolbar(true)}
+            onBlur={() => setShowToolbar(false)}
+            showToolbar={showToolbar}
+            style={styles.editorContainer}
+          />
+        ) : (
+          <SimpleAdvancedEditor
+            ref={editorRef as React.RefObject<SimpleEditorRef>}
+            value={content}
+            onChangeText={setContent}
+            placeholder={t('note_text_placeholder', 'Текст заметки...')}
+            onFocus={() => setShowToolbar(true)}
+            onBlur={() => setShowToolbar(false)}
+            showToolbar={showToolbar}
+            style={styles.editorContainer}
+          />
+        )}
         
         {/* Audio Files */}
         {audioFiles.length > 0 && (
@@ -579,8 +603,8 @@ export default function NoteEditorScreen({ route, navigation }) {
         )}
       </ScrollView>
       
-      {/* Modern Toolbar - Universal for both iOS and Android */}
-      {showToolbar && (
+      {/* Toolbar - Only for iOS/Web (Android has built-in toolbar) */}
+      {Platform.OS !== 'android' && showToolbar && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
