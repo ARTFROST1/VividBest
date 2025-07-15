@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MediaAttachment from '../components/MediaAttachment';
 import { ResizableImage } from '../components/ResizableImage';
+import { ModernToolbar } from '../components/ModernToolbar';
 
 const formattingButtons = [
   { icon: 'format-bold', markdown: '**', tooltip: 'Жирный' },
@@ -146,7 +147,92 @@ export default function NoteEditorScreen({ route, navigation }) {
     // eslint-disable-next-line
   }, [title, content, id, mediaAttachments]);
 
-  // Вставка Markdown-разметки
+  // Обработка форматирования для современной панели инструментов
+  const handleModernFormat = (action: string, value?: any) => {
+    if (Platform.OS === 'ios' && richText.current) {
+      // iOS с RichEditor
+      switch (action) {
+        case 'bold':
+          richText.current.setBold();
+          break;
+        case 'italic':
+          richText.current.setItalic();
+          break;
+        case 'underline':
+          richText.current.setUnderline();
+          break;
+        case 'strikethrough':
+          richText.current.setStrikethrough();
+          break;
+        case 'bulletList':
+          richText.current.insertBulletsList();
+          break;
+        case 'numberList':
+          richText.current.insertOrderedList();
+          break;
+        case 'checklist':
+          richText.current.insertHTML('<ul><li><input type="checkbox"> </li></ul>');
+          break;
+        case 'blockquote':
+          richText.current.setBlockquote();
+          break;
+        case 'code':
+          richText.current.setCode();
+          break;
+        case 'heading':
+          if (value === 1) richText.current.setHeading(1);
+          else if (value === 2) richText.current.setHeading(2);
+          else if (value === 3) richText.current.setHeading(3);
+          break;
+        case 'link':
+          richText.current.insertLink('Ссылка', 'https://');
+          break;
+        case 'table':
+          richText.current.insertHTML('<table border="1"><tr><td>Ячейка 1</td><td>Ячейка 2</td></tr><tr><td>Ячейка 3</td><td>Ячейка 4</td></tr></table>');
+          break;
+        case 'undo':
+          richText.current.undo();
+          break;
+        case 'redo':
+          richText.current.redo();
+          break;
+        case 'textColor':
+          richText.current.setForeColor('#FF6B6B');
+          break;
+        case 'highlight':
+          richText.current.setHiliteColor('#FFEB3B');
+          break;
+      }
+    } else {
+      // Android с TextInput - используем Markdown
+      handleFormat(getMarkdownForAction(action, value));
+    }
+  };
+
+  // Получение Markdown для Android
+  const getMarkdownForAction = (action: string, value?: any): string => {
+    switch (action) {
+      case 'bold': return '**';
+      case 'italic': return '*';
+      case 'underline': return '<u>';
+      case 'strikethrough': return '~~';
+      case 'bulletList': return '- ';
+      case 'numberList': return '1. ';
+      case 'checklist': return '- [ ] ';
+      case 'blockquote': return '> ';
+      case 'code': return '`';
+      case 'heading':
+        if (value === 1) return '# ';
+        if (value === 2) return '## ';
+        if (value === 3) return '### ';
+        return '# ';
+      case 'link': return '[ссылка](url)';
+      case 'table': return '\n| Заголовок 1 | Заголовок 2 |\n|-------------|-------------|\n| Ячейка 1    | Ячейка 2    |\n';
+      default: return '';
+    }
+  };
+
+  // Вставка Markdown-разметки (оставляем для совместимости)
   const handleFormat = (markdown: string) => {
     // Для Android вставляем/оборачиваем выбранный текст маркдаун-токеном
     if (Platform.OS === 'android') {
@@ -278,7 +364,12 @@ export default function NoteEditorScreen({ route, navigation }) {
         
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => setShowToolbar(!showToolbar)}>
-            <IconButton icon={showToolbar ? 'format-text' : 'format-color-text'} size={20} iconColor={c.primary} />
+            <IconButton 
+              icon={showToolbar ? 'keyboard-close' : 'format-text'} 
+              size={20} 
+              iconColor={c.primary}
+              style={[styles.toolbarToggle, showToolbar && { backgroundColor: c.primary + '20' }]}
+            />
           </TouchableOpacity>
           <Text style={[styles.saveStatus, { color: saveStatus === 'saving' ? c.placeholder : '#4caf50' }]}>
             {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
@@ -330,6 +421,7 @@ export default function NoteEditorScreen({ route, navigation }) {
                 }`
               }}
               onTouchStart={() => setShowToolbar(true)}
+              onFocus={() => setShowToolbar(true)}
             />
           ) : (
             <TextInput
@@ -343,6 +435,7 @@ export default function NoteEditorScreen({ route, navigation }) {
               textAlignVertical="top"
               underlineColor="transparent"
               theme={{ colors: { text: c.text, placeholder: c.placeholder, primary: c.primary } }}
+              onFocus={() => setShowToolbar(true)}
             />
           )}
           
@@ -386,57 +479,18 @@ export default function NoteEditorScreen({ route, navigation }) {
         )}
       </ScrollView>
       
-      {/* Toolbar */}
-      {Platform.OS === 'ios' && showToolbar && (
+      {/* Modern Toolbar - Universal for both iOS and Android */}
+      {showToolbar && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
         >
-          <Surface style={[styles.toolbarContainer, { backgroundColor: dark ? '#1C1C1E' : '#F2F2F7', borderTopColor: c.border }]}>
-            <View style={styles.toolbarRow}>
-              <RichToolbar
-                editor={richText}
-                actions={[
-                  actions.setBold,
-                  actions.setItalic,
-                  actions.setUnderline,
-                  actions.insertBulletsList,
-                  actions.insertOrderedList,
-                  actions.checkboxList,
-                  actions.blockquote,
-                  actions.code,
-                  actions.undo,
-                  actions.redo
-                ]}
-                style={styles.toolbar}
-                iconTint={c.primary}
-                selectedIconTint={c.accent}
-                disabledIconTint={c.disabled}
-                iconSize={20}
-              />
-              <IconButton
-                icon="image-plus"
-                size={24}
-                iconColor={c.primary}
-                style={styles.mediaButton}
-                onPress={() => setShowMediaOptions(!showMediaOptions)}
-              />
-            </View>
-          </Surface>
-        </KeyboardAvoidingView>
-      )}
-
-      {/* Android Toolbar */}
-      {Platform.OS === 'android' && showToolbar && (
-        <KeyboardAvoidingView behavior={undefined}>
-          <Surface style={[styles.toolbarContainer, { backgroundColor: dark ? '#1C1C1E' : '#F2F2F7', borderTopColor: c.border }]}>            
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarRow}>
-              {formattingButtons.map(btn => (
-                <IconButton key={btn.icon} icon={btn.icon} size={20} iconColor={c.primary} onPress={()=>handleFormat(btn.markdown)} />
-              ))}
-              <IconButton icon="image-plus" size={24} iconColor={c.primary} style={styles.mediaButton} onPress={() => setShowMediaOptions(!showMediaOptions)} />
-            </ScrollView>
-          </Surface>
+          <ModernToolbar
+            onFormat={handleModernFormat}
+            onImagePicker={() => setShowMediaOptions(!showMediaOptions)}
+            visible={showToolbar}
+            isDarkMode={dark}
+          />
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -470,6 +524,9 @@ const styles = StyleSheet.create({
   saveStatus: {
     fontSize: 12,
     marginRight: 8,
+  },
+  toolbarToggle: {
+    borderRadius: 8,
   },
   contentContainer: {
     padding: 16,
