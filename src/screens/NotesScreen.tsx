@@ -2306,66 +2306,84 @@ const NotesScreen = () => {
         {renameDialog && (
           <View style={styles.modernModalOverlay}>
             <View style={[styles.modernModalContent, { backgroundColor: colors.background }]}>
-              {/* Заголовок */}
-              <View style={styles.modernModalHeader}>
-                <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
-                  Переименовать {renameDialog.isFolder ? 'папку' : 'заметку'}
-                </Text>
-              </View>
-
-              {/* Название */}
-              <View style={styles.modernModalSection}>
-                <View style={styles.modernModalSectionHeader}>
-                  <MaterialCommunityIcons 
-                    name="pencil-outline" 
-                    size={20} 
-                    color="#F7B801" 
-                  />
-                  <Text style={[styles.modernModalSectionLabel, { color: colors.onBackground }]}>
-                    Новое название
+              <View style={styles.modernModalInner}>
+                {/* Заголовок с иконкой */}
+                <View style={styles.modernModalHeader}>
+                  <View style={styles.modernModalIcon}>
+                    <MaterialCommunityIcons 
+                      name="pencil-outline" 
+                      size={28} 
+                      color={colors.primary} 
+                    />
+                  </View>
+                  <Text style={[styles.modernModalTitle, { color: colors.onBackground }]}>
+                    Переименовать {renameDialog.isFolder ? 'папку' : 'заметку'}
+                  </Text>
+                  <Text style={[styles.modernModalSubtitle, { color: colors.onBackground }]}>
+                    {renameDialog.isFolder 
+                      ? 'Введите новое название для папки'
+                      : 'Введите новое название для заметки'
+                    }
                   </Text>
                 </View>
-                <TextInput
-                  placeholder={renameDialog.isFolder ? "Название папки..." : "Название заметки..."}
-                  value={renameValue}
-                  onChangeText={setRenameValue}
-                  autoFocus
-                  style={[styles.modernModalInput, { backgroundColor: colors.surface, color: colors.onSurface }]}
-                  placeholderTextColor={colors.placeholder}
-                />
-              </View>
 
-              {/* Кнопки действий */}
-              <View style={styles.modernModalActions}>
-                <TouchableOpacity
-                  onPress={() => setRenameDialog(null)}
-                  style={[styles.modernModalCancelButton, { borderColor: colors.outline }]}
-                >
-                  <Text style={[styles.modernModalCancelText, { color: colors.placeholder }]}>
-                    Отмена
-                  </Text>
-                </TouchableOpacity>
-                
-                <LinearGradient
-                  colors={['#F7B801', '#F39C12']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modernModalCreateButton}
-                >
-                  <TouchableOpacity
+                {/* Поле ввода названия */}
+                <View style={styles.modernModalSection}>
+                  <View style={styles.modernModalInputContainer}>
+                    <TextInput
+                      placeholder={renameDialog.isFolder ? "Название папки" : "Название заметки"}
+                      value={renameValue}
+                      onChangeText={setRenameValue}
+                      autoFocus
+                      style={[
+                        styles.modernModalInput,
+                        { color: colors.onSurface },
+                        renameValue.length > 0 && styles.modernModalInputFocused
+                      ]}
+                      placeholderTextColor={colors.outline}
+                      returnKeyType="done"
+                      onSubmitEditing={() => {
+                        if (renameDialog) {
+                          handleRenameApply();
+                          setRenameDialog(null);
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Кнопки действий */}
+                <View style={styles.modernModalActions}>
+                  <TouchableOpacity 
+                    onPress={() => setRenameDialog(null)}
+                    style={styles.modernModalCancelButton}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.modernModalCancelText}>
+                      Отмена
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
                     onPress={() => {
                       if (renameDialog) {
                         handleRenameApply();
                         setRenameDialog(null);
                       }
                     }}
-                    style={styles.modernModalCreateButtonContent}
+                    style={[
+                      styles.modernModalCreateButton,
+                      { backgroundColor: colors.primary },
+                      !renameValue.trim() && { opacity: 0.5 }
+                    ]}
+                    activeOpacity={0.8}
+                    disabled={!renameValue.trim()}
                   >
                     <Text style={styles.modernModalCreateText}>
                       Переименовать
                     </Text>
                   </TouchableOpacity>
-                </LinearGradient>
+                </View>
               </View>
             </View>
           </View>
