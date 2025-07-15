@@ -2152,7 +2152,7 @@ const NotesScreen = () => {
                         ]}
                         placeholderTextColor={colors.outline}
                         returnKeyType="done"
-                        onSubmitEditing={addNewItem}
+                        onSubmitEditing={handleAdd}
                       />
                     </View>
                     
@@ -2194,7 +2194,7 @@ const NotesScreen = () => {
                         style={styles.modernModalCreateButtonGradient}
                       >
                         <TouchableOpacity 
-                          onPress={addNewItem}
+                          onPress={handleAdd}
                           activeOpacity={0.8}
                           disabled={!newTitle.trim()}
                           style={{ opacity: newTitle.trim() ? 1 : 0.5 }}
