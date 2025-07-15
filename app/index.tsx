@@ -116,4 +116,6 @@ export default function AppLayout() {
       </ThemedSafeArea>
     </SafeAreaProvider>
   );
-} 
+}
+
+export default AppLayout;
