@@ -10,8 +10,8 @@ import { fetchLinkPreview } from '../utils/linkPreview';
 import { debounce } from '../utils/debounce';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AdvancedRichTextEditor, { EditorRef } from '../components/AdvancedRichTextEditor';
-import { ModernToolbar } from '../components/ModernToolbar';
+import SimpleAdvancedEditor, { SimpleEditorRef } from '../components/SimpleAdvancedEditor';
+import { AppleNotesToolbar } from '../components/AppleNotesToolbar';
 import { RichEditor } from 'react-native-pell-rich-editor';
 import MediaAttachment from '../components/MediaAttachment';
 import { ResizableImage } from '../components/ResizableImage';
@@ -39,7 +39,7 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [content, setContent] = useState('');
   const [selection, setSelection] = useState<{start:number; end:number}>({start:0,end:0});
   const isFirstLoad = useRef(true);
-  const editorRef = useRef<EditorRef>(null);
+  const editorRef = useRef<SimpleEditorRef>(null);
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
@@ -517,8 +517,8 @@ export default function NoteEditorScreen({ route, navigation }) {
           {new Date().toLocaleDateString()} · {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </Text>
         
-        {/* Advanced Rich Text Editor */}
-        <AdvancedRichTextEditor
+        {/* Simple Advanced Rich Text Editor */}
+        <SimpleAdvancedEditor
           ref={editorRef}
           value={content}
           onChangeText={setContent}
@@ -526,7 +526,6 @@ export default function NoteEditorScreen({ route, navigation }) {
           onFocus={() => setShowToolbar(true)}
           onBlur={() => setShowToolbar(false)}
           showToolbar={showToolbar}
-          onToolbarVisibilityChange={setShowToolbar}
           style={styles.editorContainer}
         />
         
@@ -586,11 +585,12 @@ export default function NoteEditorScreen({ route, navigation }) {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
         >
-          <ModernToolbar
-            editorRef={editorRef}
+          <AppleNotesToolbar
+            onFormat={handleAppleNotesFormat}
+            onImagePicker={handleImagePicker}
+            onAudioPicker={handleAudioPicker}
             visible={showToolbar}
             selectedFormats={selectedFormats}
-            onAction={handleAppleNotesFormat}
           />
         </KeyboardAvoidingView>
       )}

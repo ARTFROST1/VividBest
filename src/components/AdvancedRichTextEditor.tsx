@@ -249,9 +249,11 @@ const AdvancedRichTextEditor = forwardRef<EditorRef, AdvancedRichTextEditorProps
       
       // Устанавливаем курсор после чекбокса
       setTimeout(() => {
-        textInputRef.current?.setNativeProps({
-          selection: { start: start + 6, end: start + 6 }
-        });
+        if (textInputRef.current && Platform.OS !== 'web') {
+          textInputRef.current.setNativeProps?.({
+            selection: { start: start + 6, end: start + 6 }
+          });
+        }
       }, 10);
     } else {
       // Если в строке есть текст, создаем новую строку с чекбоксом
@@ -259,9 +261,11 @@ const AdvancedRichTextEditor = forwardRef<EditorRef, AdvancedRichTextEditorProps
       onChangeText(newText);
       
       setTimeout(() => {
-        textInputRef.current?.setNativeProps({
-          selection: { start: start + 7, end: start + 7 }
-        });
+        if (textInputRef.current && Platform.OS !== 'web') {
+          textInputRef.current.setNativeProps?.({
+            selection: { start: start + 7, end: start + 7 }
+          });
+        }
       }, 10);
     }
   }, [value, selection, onChangeText]);
@@ -520,21 +524,28 @@ const AdvancedRichTextEditor = forwardRef<EditorRef, AdvancedRichTextEditorProps
 
   // Обработка изменения выделения
   const handleSelectionChange = useCallback((event: any) => {
-    const { selection } = event.nativeEvent;
-    setSelection(selection);
+    if (Platform.OS === 'web') {
+      // Для веб-версии используем простое отслеживание
+      return;
+    }
     
-    // Определяем текущее форматирование по курсору
-    const selectedText = value.substring(selection.start, selection.end);
-    setCurrentFormats({
-      bold: selectedText.includes('**'),
-      italic: selectedText.includes('*') && !selectedText.includes('**'),
-      underline: selectedText.includes('__'),
-      strikethrough: selectedText.includes('~~'),
-      code: selectedText.includes('`'),
-      heading1: selectedText.includes('# '),
-      heading2: selectedText.includes('## '),
-      heading3: selectedText.includes('### '),
-    });
+    const { selection } = event.nativeEvent;
+    if (selection) {
+      setSelection(selection);
+      
+      // Определяем текущее форматирование по курсору
+      const selectedText = value.substring(selection.start, selection.end);
+      setCurrentFormats({
+        bold: selectedText.includes('**'),
+        italic: selectedText.includes('*') && !selectedText.includes('**'),
+        underline: selectedText.includes('__'),
+        strikethrough: selectedText.includes('~~'),
+        code: selectedText.includes('`'),
+        heading1: selectedText.includes('# '),
+        heading2: selectedText.includes('## '),
+        heading3: selectedText.includes('### '),
+      });
+    }
   }, [value]);
 
   return (
@@ -566,8 +577,8 @@ const AdvancedRichTextEditor = forwardRef<EditorRef, AdvancedRichTextEditorProps
             textAlignVertical="top"
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onSelectionChange={handleSelectionChange}
-            selection={selection}
+            onSelectionChange={Platform.OS !== 'web' ? handleSelectionChange : undefined}
+            selection={Platform.OS !== 'web' ? selection : undefined}
             scrollEnabled={false}
           />
           

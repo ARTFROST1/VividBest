@@ -98,7 +98,7 @@ const toolbarSections: ToolbarSection[] = [
   },
 ];
 
-export const ModernToolbar: React.FC<ModernToolbarProps> = ({
+const ModernToolbar: React.FC<ModernToolbarProps> = ({
   editorRef,
   visible,
   selectedFormats,
@@ -109,7 +109,7 @@ export const ModernToolbar: React.FC<ModernToolbarProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('formatting');
 
   // Обработка нажатия на кнопку
-  const handleButtonPress = useCallback((button: ToolbarButton) => {
+  const handleButtonPress = React.useCallback((button: ToolbarButton) => {
     if (!editorRef.current) return;
 
     switch (button.action) {
@@ -144,7 +144,7 @@ export const ModernToolbar: React.FC<ModernToolbarProps> = ({
   }, [editorRef, onAction]);
 
   // Переключение развернутости секции
-  const toggleSection = useCallback((sectionId: string) => {
+  const toggleSection = React.useCallback((sectionId: string) => {
     setExpandedSections(prev => {
       const newSet = new Set(prev);
       if (newSet.has(sectionId)) {
@@ -323,8 +323,6 @@ export const ModernToolbar: React.FC<ModernToolbarProps> = ({
   );
 };
 
-const useCallback = React.useCallback;
-
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: 1,
@@ -385,4 +383,5 @@ const styles = StyleSheet.create({
   },
 });
 
+export { ModernToolbar };
 export default ModernToolbar;
