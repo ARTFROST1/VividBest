@@ -32,7 +32,7 @@ export const ThemedStatusBar: React.FC = () => {
     <>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? DARK_BG : LIGHT_BG}
+        translucent={true}
       />
       <View 
         style={{ 

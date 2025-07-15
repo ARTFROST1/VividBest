@@ -65,7 +65,7 @@ const RootNavigator = () => {
   return (
     <>
       <ThemedStatusBar />
-      <Stack.Navigator screenOptions={{ headerShown: false }} id={undefined}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={BottomTabs} />
         <Stack.Screen name="NoteEditor" component={NoteEditorScreen} />
         <Stack.Screen name="NotificationsSettings" component={NotificationsSettingsScreen} />

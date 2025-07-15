@@ -129,6 +129,10 @@ The application follows modern React Native development practices with a focus o
 - **Expo Router Fix**: Added proper default export to app/index.tsx to resolve expo-router entry system requirements
 - **Local Development Fix**: Created package-lock-version-fix.md with instructions for resolving React version conflicts on local Windows machines
 - **Migration Complete**: Successfully migrated from Replit Agent to standard Replit environment
+- **Expo Dependencies Update**: Replaced deprecated expo-av with expo-audio and expo-video packages for SDK 54 compatibility
+- **StatusBar Edge-to-Edge Fix**: Removed backgroundColor from StatusBar component to support edge-to-edge mode
+- **Navigator Props Fix**: Removed invalid id prop from Stack.Navigator to fix React.Fragment style warnings
+- **Metro Cache Cleanup**: Cleaned up Metro bundler cache to resolve module resolution issues after dependency changes
 - **Platform-Specific Editors**: Created dedicated AndroidRichTextEditor for Android optimization with keyboard-aware toolbar that sticks to the keyboard
 - **Advanced Android Toolbar**: Implemented two-row toolbar with formatting (Bold, Italic, Underline, Strikethrough, Lists) and media tools (Checkbox, Image, Table, Link, Headings)
 - **Web/iOS Compatibility**: Maintained SimpleAdvancedEditor for web and iOS with external toolbar to prevent duplication

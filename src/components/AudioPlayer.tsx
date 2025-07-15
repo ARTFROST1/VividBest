@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Surface, useTheme, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { Audio } from 'expo-audio';
 
 interface AudioPlayerProps {
   uri: string;

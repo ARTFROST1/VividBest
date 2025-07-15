@@ -37,3 +37,11 @@ npm list react react-dom react-test-renderer
 - Используйте точные версии (без ^ или ~) для React пакетов
 - При возникновении ошибок сначала очистите кеш npm и Expo
 - Убедитесь, что используете совместимые версии для Expo SDK 53
+
+## Дополнительные исправления
+
+### Android-специфичные проблемы:
+1. **expo-notifications**: В Expo Go с SDK 53 не поддерживаются push notifications. Используйте development build.
+2. **expo-av**: Заменен на expo-audio и expo-video для совместимости с SDK 54.
+3. **StatusBar**: Убран backgroundColor для поддержки edge-to-edge режима.
+4. **React.Fragment**: Исправлена проблема с invalid style prop в navigator.
