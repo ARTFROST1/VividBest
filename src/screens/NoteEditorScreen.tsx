@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, StatusBar, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, StatusBar, SafeAreaView, TouchableOpacity, Alert, Animated } from 'react-native';
 import { TextInput, Appbar, IconButton, useTheme, Text, Surface } from 'react-native-paper';
 import { saveNoteLocal, loadNoteLocal, NoteData } from '../services/notesService';
 import notesEventBus from '../utils/notesEventBus';
@@ -41,6 +41,9 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [selection, setSelection] = useState<{start:number; end:number}>({start:0,end:0});
   const isFirstLoad = useRef(true);
   const editorRef = useRef<SimpleEditorRef | AndroidEditorRef>(null);
+  const richText = useRef<any>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
   const [loadingLinks, setLoadingLinks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
@@ -183,7 +186,13 @@ export default function NoteEditorScreen({ route, navigation }) {
           setTitle(typeof note.title === 'string' ? note.title : '');
           setContent(typeof note.content === 'string' ? note.content : '');
           if (note.mediaAttachments && Array.isArray(note.mediaAttachments)) {
-            setMediaAttachments(note.mediaAttachments);
+            const validAttachments = note.mediaAttachments.map(attachment => ({
+              ...attachment,
+              type: (attachment.type as 'image' | 'audio') || 'image', // Default type for backward compatibility
+              name: attachment.name || `image_${attachment.id}`,
+              duration: attachment.duration || 0
+            }));
+            setMediaAttachments(validAttachments);
           } else {
             setMediaAttachments([]);
           }
@@ -380,7 +389,9 @@ export default function NoteEditorScreen({ route, navigation }) {
       width,
       height,
       x,
-      y
+      y,
+      type: 'image' as const,
+      name: `image_${Date.now()}`
     };
     setMediaAttachments(prev => [...prev, newAttachment]);
     setShowMediaOptions(false);
@@ -461,12 +472,36 @@ export default function NoteEditorScreen({ route, navigation }) {
     });
   }, [content]);
 
+  // iOS-анимации входа
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <StatusBar barStyle={dark ? 'light-content' : 'dark-content'} />
       
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Animated Header */}
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }
+        ]}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <IconButton icon="chevron-left" size={24} iconColor={c.primary} />
           <Text style={[styles.backText, { color: c.primary }]}>{t('notes', 'Заметки')}</Text>
@@ -485,14 +520,21 @@ export default function NoteEditorScreen({ route, navigation }) {
             {saveStatus === 'saving' ? t('saving', 'Сохраняется...') : t('saved', 'Сохранено')}
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
-       {/* Content */}
-      <ScrollView 
-        contentContainerStyle={styles.contentContainer} 
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+       {/* Animated Content */}
+      <Animated.View 
+        style={{
+          flex: 1,
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
       >
+        <ScrollView 
+          contentContainerStyle={styles.contentContainer} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Title Input - iOS style with no visible label */}
         <TextInput
           placeholder={t('note_title', 'Заголовок')}
@@ -602,6 +644,7 @@ export default function NoteEditorScreen({ route, navigation }) {
           />
         )}
       </ScrollView>
+      </Animated.View>
       
       {/* Toolbar - Only for iOS/Web (Android has built-in toolbar) */}
       {Platform.OS !== 'android' && showToolbar && (

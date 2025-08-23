@@ -1,7 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Сервис для работы с заметками (заглушка, позже будет Supabase)
+// Локальный сервис для работы с заметками (без синхронизации)
 export interface NoteData {
   id: string;
   title: string;
@@ -14,58 +13,16 @@ export interface NoteData {
     height: number;
     x: number;
     y: number;
+    type?: 'image' | 'audio';
+    name?: string;
+    duration?: number;
   }>;
 }
 
-const SUPABASE_URL = 'https://fhbzxfwihphbbqymnwfh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZoYnp4ZndpaHBoYmJxeW1ud2ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzM5MzksImV4cCI6MjA2MzUwOTkzOX0.-AtEWzpvOC4vwHiuK5TKi99vjbdfKkex8VAwIVqdm68';
-
-// Отключаем realtime для Expo/React Native
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-export async function saveNote(note: NoteData): Promise<void> {
-  await supabase.from('notes').upsert({
-    id: note.id,
-    title: note.title,
-    content: note.content,
-    media_attachments: note.mediaAttachments,
-    updated_at: new Date().toISOString(),
-  });
-}
-
-export async function loadNote(id: string): Promise<NoteData | null> {
-  const { data, error } = await supabase.from('notes').select('id, title, content, media_attachments').eq('id', id).single();
-  if (error || !data) return null;
-  return {
-    id: data.id,
-    title: data.title,
-    content: data.content,
-    mediaAttachments: data.media_attachments,
-  };
-
-}
-
+// Локальная заглушка для загрузки изображений (без Supabase)
 export async function uploadNoteImage(uri: string, userId: string): Promise<string | null> {
-  try {
-    // Получаем расширение файла
-    const ext = uri.split('.').pop();
-    const fileName = `note-image-${Date.now()}.${ext}`;
-    // Получаем содержимое файла как blob
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    // Загружаем в Supabase Storage (bucket: 'attachments')
-    const { data, error } = await supabase.storage.from('attachments').upload(`${userId}/${fileName}`, blob, {
-      cacheControl: '3600',
-      upsert: true,
-      contentType: blob.type,
-    });
-    if (error) return null;
-    // Получаем публичную ссылку
-    const { data: publicData } = supabase.storage.from('attachments').getPublicUrl(`${userId}/${fileName}`);
-    return publicData?.publicUrl || null;
-  } catch (e) {
-    return null;
-  }
+  // Просто возвращаем исходный URI для локального использования
+  return uri;
 }
 
 export async function saveNoteLocal(note: NoteData): Promise<void> {

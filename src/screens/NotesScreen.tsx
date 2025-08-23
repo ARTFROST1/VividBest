@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar, Image } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, StatusBar, Image, Animated, FlatList, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Button, List, IconButton, TextInput, Dialog, Portal, Searchbar, SegmentedButtons, Card, Appbar, useTheme } from 'react-native-paper';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Swipeable, LongPressGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import Sidebar, { FolderNode } from '../components/Sidebar';
 import { useTranslation } from 'react-i18next';
@@ -953,6 +953,89 @@ const NotesScreen = () => {
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
+  
+  // Новые iOS-стили
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  iosSearchBar: {
+    elevation: 0,
+    shadowOpacity: 0,
+    borderRadius: 12,
+    backgroundColor: 'rgba(142, 142, 147, 0.12)',
+  },
+  iosSearchInput: {
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  
+  // Новые стили для iOS-карточек заметок
+  iosGridContainer: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  iosGridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  noteCard: {
+    flex: 1,
+    marginHorizontal: 8,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    minHeight: 160,
+    maxHeight: 200,
+    position: 'relative',
+  },
+  pinnedIndicator: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 1,
+  },
+  noteTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  notePreview: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+    flex: 1,
+  },
+  noteDate: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 'auto',
+  },
+  
+  // Стили для пустого состояния
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 64,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
   });
   const [notes, setNotes] = useState<NoteItem[]>(initialNotes);
   const [showDialog, setShowDialog] = useState(false);
@@ -961,8 +1044,11 @@ const NotesScreen = () => {
   const [moveTarget, setMoveTarget] = useState<string | null>(null);
   const [moveSource, setMoveSource] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'kanban'>('tree');
-  const [viewType, setViewType] = useState<'list' | 'grid'>('list');
+  const [viewType, setViewType] = useState<'list' | 'grid'>('grid');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [activeSidebarFilter, setActiveSidebarFilter] = useState<string | null>(null);
   const navigation = useNavigation();
@@ -1031,6 +1117,22 @@ const NotesScreen = () => {
     }
     if (savedFolder) setActiveSidebarFilter(savedFolder);
   };
+
+  // iOS-стиль анимация входа
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     loadAllNotes();
@@ -1312,7 +1414,13 @@ const NotesScreen = () => {
     ));
   }
 
-  // Рекурсивный фильтр по заголовку и (будущему) содержимому
+  // Улучшенный поиск iOS-стиль
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    setSearch(query);
+  }, []);
+
+  // Рекурсивный фильтр по заголовку и содержимому
   function filterNotes(items: NoteItem[], query: string): NoteItem[] {
     if (!query.trim()) return items;
     const q = query.trim().toLowerCase();
@@ -1320,14 +1428,118 @@ const NotesScreen = () => {
       .map(item => {
         const children = item.children ? filterNotes(item.children, query) : undefined;
         const matchTitle = item.title.toLowerCase().includes(q);
-        // Для расширения: добавить matchContent, если появится поле content
-        if (matchTitle || (children && children.length > 0)) {
+        const matchContent = item.content ? item.content.toLowerCase().includes(q) : false;
+        if (matchTitle || matchContent || (children && children.length > 0)) {
           return { ...item, children };
         }
         return null;
       })
       .filter(Boolean) as NoteItem[];
   }
+
+  // iOS-стиль рендера карточки заметки для grid вида
+  const renderNoteCard = useCallback(({ item, index }: { item: NoteItem; index: number }) => {
+    if (item.isFolder) return null;
+
+    const noteContent = item.content || '';
+    const previewText = noteContent.replace(/<[^>]*>/g, '').substring(0, 100);
+    const timestamp = item.timestamp ? new Date(item.timestamp) : new Date();
+    const formattedDate = timestamp.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+
+    return (
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
+      >
+        <Pressable
+          onPress={() => navigation.navigate('NoteEditor', { id: item.id, title: item.title })}
+          onLongPress={() => handleNoteLongPress(item)}
+          style={({ pressed }) => [
+            styles.noteCard,
+            { backgroundColor: colors.surface },
+            pressed && { transform: [{ scale: 0.98 }] },
+          ]}
+        >
+          {item.pinned && (
+            <View style={styles.pinnedIndicator}>
+              <MaterialCommunityIcons name="pin" size={16} color={colors.primary} />
+            </View>
+          )}
+          
+          <Text style={[styles.noteTitle, { color: colors.onSurface }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          
+          {previewText.length > 0 && (
+            <Text style={[styles.notePreview, { color: colors.onSurfaceVariant }]} numberOfLines={3}>
+              {previewText}
+            </Text>
+          )}
+          
+          <Text style={[styles.noteDate, { color: colors.outline }]}>
+            {formattedDate}
+          </Text>
+        </Pressable>
+      </Animated.View>
+    );
+  }, [colors, fadeAnim, slideAnim, navigation]);
+
+  // Обработка долгого нажатия на заметку
+  const handleNoteLongPress = useCallback((item: NoteItem) => {
+    // Здесь можно добавить контекстное меню или действия
+    console.log('Long press on note:', item.title);
+  }, []);
+
+  // Получение отфильтрованных заметок для grid вида
+  const getGridNotes = useCallback(() => {
+    const filtered = filterBySidebar(notes);
+    const searched = filterNotes(filtered, searchQuery);
+    return flattenNotes(searched).filter(note => !note.isFolder);
+  }, [notes, searchQuery, activeSidebarFilter]);
+
+  // iOS-стиль рендера сетки заметок
+  const renderIOSNotesGrid = useCallback(() => {
+    const gridNotes = getGridNotes();
+    
+    if (gridNotes.length === 0) {
+      return (
+        <View style={styles.emptyStateContainer}>
+          <MaterialCommunityIcons 
+            name="note-outline" 
+            size={64} 
+            color={colors.outline} 
+          />
+          <Text style={[styles.emptyStateText, { color: colors.onSurfaceVariant }]}>
+            {searchQuery ? 'Заметки не найдены' : 'Нет заметок'}
+          </Text>
+          {searchQuery && (
+            <Text style={[styles.emptyStateSubtext, { color: colors.outline }]}>
+              Попробуйте изменить поисковый запрос
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={gridNotes}
+        renderItem={renderNoteCard}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.iosGridRow}
+        contentContainerStyle={styles.iosGridContainer}
+        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+      />
+    );
+  }, [colors, getGridNotes, renderNoteCard, searchQuery]);
 
   // Для Канбан-доски: собираем все заметки (не папки) в плоский массив
   function flattenNotes(items: NoteItem[]): NoteItem[] {
@@ -2064,19 +2276,28 @@ const NotesScreen = () => {
       )}
       {/* Основной контент */}
       <View style={[styles.notesMain, { backgroundColor: c.background, flex: 1 }]}>
-        {/* Поиск в стиле iOS */}
-        <View style={styles.searchBlock}>
-          <TextInput
-            placeholder={t('search_notes_placeholder', 'Поиск')}
-            value={search}
-            onChangeText={setSearch}
-            style={[styles.iosSearchField, { borderWidth: 0, borderBottomWidth: 0 }]}
-            placeholderTextColor="#8E8E93"
-            clearButtonMode="while-editing"
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
+        {/* Улучшенный поиск в стиле iOS */}
+        <Animated.View 
+          style={[
+            styles.searchContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }
+          ]}
+        >
+          <Searchbar
+            placeholder={t('search_notes_placeholder', 'Поиск заметок')}
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+            style={[styles.iosSearchBar, { backgroundColor: colors.surfaceVariant }]}
+            inputStyle={[styles.iosSearchInput, { color: colors.onSurface }]}
+            placeholderTextColor={colors.outline}
+            iconColor={colors.onSurfaceVariant}
+            clearAccessibilityLabel="Очистить поиск"
+            searchAccessibilityLabel="Поиск заметок"
           />
-        </View>
+        </Animated.View>
         
 
         {/* Пустой экран, если нет папок */}
@@ -2104,8 +2325,8 @@ const NotesScreen = () => {
         ) && (
           <ScrollView style={styles.notesListBlock}>
             {viewType === 'list' 
-              ? renderNotesList(filterNotes(filterBySidebar(notes), search))
-              : renderNotesGrid(filterNotes(filterBySidebar(notes), search))
+              ? renderNotesList(filterNotes(filterBySidebar(notes), searchQuery))
+              : renderIOSNotesGrid()
             }
           </ScrollView>
         )}
