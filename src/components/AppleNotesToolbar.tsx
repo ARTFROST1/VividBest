@@ -88,6 +88,7 @@ const quickButtons: ToolbarButton[] = [
   { id: 'underline', icon: 'format-underline', action: 'underline', title: 'Подчеркнутый' },
   { id: 'strikethrough', icon: 'format-strikethrough', action: 'strikethrough', title: 'Зачеркнутый' },
   { id: 'align', icon: 'format-align-left', action: 'align', title: 'Выравнивание' },
+  { id: 'quote', icon: 'format-quote-close', action: 'blockquote', title: 'Цитата' },
 ];
 
 export const AppleNotesToolbar: React.FC<AppleNotesToolbarProps> = ({
@@ -111,6 +112,17 @@ export const AppleNotesToolbar: React.FC<AppleNotesToolbarProps> = ({
         break;
       case 'audio':
         onAudioPicker();
+        break;
+      case 'align':
+        // Cycle through alignment options
+        const alignments = ['left', 'center', 'right', 'justify'];
+        const currentAlign = button.value || 'left';
+        const nextAlign = alignments[(alignments.indexOf(currentAlign) + 1) % alignments.length];
+        onFormat('align', nextAlign);
+        break;
+      case 'location':
+        // Insert location placeholder
+        onFormat('insertText', '[📍 Местоположение]');
         break;
       default:
         onFormat(button.action, button.value);

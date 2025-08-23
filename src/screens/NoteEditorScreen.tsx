@@ -49,6 +49,11 @@ export default function NoteEditorScreen({ route, navigation }) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
   const [showToolbar, setShowToolbar] = useState(false);
   const [selectedFormats, setSelectedFormats] = useState<Set<string>>(new Set());
+  
+  // История изменений для отмены/повтора
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  
   const [mediaAttachments, setMediaAttachments] = useState<Array<{
     id: string;
     uri: string;
@@ -320,10 +325,35 @@ export default function NoteEditorScreen({ route, navigation }) {
           // Placeholder for drawing functionality
           richText.current.insertHTML('<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; margin: 10px 0;">Область для рисования</div>');
           break;
+        case 'undo':
+          richText.current.undo();
+          break;
+        case 'redo':
+          richText.current.redo();
+          break;
+        case 'blockquote':
+          richText.current.insertHTML('<blockquote style="border-left: 4px solid #ccc; margin: 16px 0; padding: 8px 16px; background: #f9f9f9;">Цитата</blockquote>');
+          break;
+        case 'align':
+          // Handle text alignment
+          const alignment = value || 'left';
+          richText.current.setTextAlign(alignment);
+          break;
+        case 'insertText':
+          richText.current.insertText(value || '');
+          break;
       }
     } else {
       // Android с TextInput - используем Markdown
-      handleMarkdownFormat(getMarkdownForAction(action, value));
+      if (action === 'undo') {
+        handleUndo();
+      } else if (action === 'redo') {
+        handleRedo();
+      } else {
+        // Добавляем в историю перед изменением
+        addToHistory(content);
+        handleMarkdownFormat(getMarkdownForAction(action, value));
+      }
     }
   };
 
@@ -347,9 +377,47 @@ export default function NoteEditorScreen({ route, navigation }) {
       case 'link': return '[ссылка](url)';
       case 'table': return '\n| Заголовок 1 | Заголовок 2 |\n|-------------|-------------|\n| Ячейка 1    | Ячейка 2    |\n';
       case 'draw': return '\n[Область для рисования]\n';
+      case 'blockquote': return '> ';
+      case 'insertText': return value || '';
       default: return '';
     }
   };
+
+  // Добавление в историю изменений
+  const addToHistory = (text: string) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(text);
+      return newHistory.slice(-50); // Ограничиваем до 50 записей
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  };
+
+  // Отмена действия
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  };
+
+  // Повтор действия
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setContent(history[newIndex]);
+    }
+  };
+
+  // Инициализация истории при первой загрузке
+  useEffect(() => {
+    if (history.length === 0 && content) {
+      setHistory([content]);
+      setHistoryIndex(0);
+    }
+  }, [content, history.length]);
 
   // Вставка Markdown-разметки (для совместимости с Android)
   const handleMarkdownFormat = (markdown: string) => {
