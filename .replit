@@ -1,14 +1,13 @@
 modules = ["nodejs-20"]
-run = "npm run dev"
+run = "npm run start"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+run = ["sh", "-c", "npm run start"]
 
 [[ports]]
 localPort = 5000
@@ -34,7 +33,13 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "expo start --web --port 5000"
+args = "npx expo start --web --port 5000"
 waitForPort = 5000
+
+[agent]
+expertMode = true
